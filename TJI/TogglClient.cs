@@ -99,6 +99,13 @@ namespace TJI
                 }
             }
 
+            if (entries != null)
+            {
+                entries = (from e in entries
+                           where e.Duration > 30
+                           select e).ToArray();
+            }
+
             return entries;
         }
 
