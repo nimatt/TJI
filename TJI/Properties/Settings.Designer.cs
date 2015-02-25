@@ -70,5 +70,17 @@ namespace TJI.Properties {
                 this["TogglApiToken"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("600")]
+        public int SyncIntervall {
+            get {
+                return ((int)(this["SyncIntervall"]));
+            }
+            set {
+                this["SyncIntervall"] = value;
+            }
+        }
     }
 }

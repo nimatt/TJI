@@ -1,4 +1,21 @@
-﻿using System;
+﻿/*
+ * This file is part of TJI.
+ * 
+ * TJI is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * TJI is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with TJI.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -21,6 +38,15 @@ namespace TJI
         private string _apiToken;
         private Cookie authCookie = null;
 
+        public bool IsLoggedIn
+        {
+            get
+            {
+                // TODO: Add expiration
+                return authCookie != null;
+            }
+        }
+
         public TogglClient(string apiToken)
         {
             if (string.IsNullOrEmpty(apiToken))
@@ -39,15 +65,22 @@ namespace TJI
             request.Headers.Add("Authorization", authHeader);
             request.Method = "POST";
 
-            using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
+            try
             {
-                WebHeaderCollection headers = response.Headers;
-                Match cookieMatch = CookieContents.Match(response.Headers["Set-Cookie"]);
-                if (cookieMatch.Success)
+                using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
                 {
-                    authCookie = new Cookie(COOKIE_NAME, cookieMatch.Groups["contents"].Value, cookieMatch.Groups["path"].Value, cookieMatch.Groups["domain"].Value);
-                    return true;
+                    WebHeaderCollection headers = response.Headers;
+                    Match cookieMatch = CookieContents.Match(response.Headers["Set-Cookie"]);
+                    if (cookieMatch.Success)
+                    {
+                        authCookie = new Cookie(COOKIE_NAME, cookieMatch.Groups["contents"].Value, cookieMatch.Groups["path"].Value, cookieMatch.Groups["domain"].Value);
+                        return true;
+                    }
                 }
+            }
+            catch (WebException)
+            {
+                // TODO: Add logging
             }
 
             return false;
