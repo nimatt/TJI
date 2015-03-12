@@ -35,40 +35,5 @@ namespace TJI
             Application.SetCompatibleTextRenderingDefault(false);
             Application.Run(new MainWindow());
         }
-
-        static void AskUserForSettings(TJISettings settings)
-        {
-            Console.WriteLine("Enter missing settings.");
-
-            if (string.IsNullOrEmpty(settings.TogglApiToken))
-            {
-                string token = GetFromUser("Toggl API Token: ");
-                settings.TogglApiToken = token;
-            }
-
-            if (string.IsNullOrEmpty(settings.JiraServerUrl))
-            {
-                string url = GetFromUser("Jira server URL: ");
-                settings.JiraServerUrl = url.TrimEnd(new[] { '/' });
-            }
-
-            if (string.IsNullOrEmpty(settings.JiraUsername))
-            {
-                string username = GetFromUser("Jira username: ");
-                settings.JiraUsername = username;
-            }
-
-            if (string.IsNullOrEmpty(settings.JiraPassword))
-            {
-                string password = GetFromUser("Jira password: ");
-                settings.JiraPassword = password;
-            }
-        }
-
-        private static string GetFromUser(string message)
-        {
-            Console.Write(message);
-            return Console.ReadLine().Trim();
-        }
     }
 }

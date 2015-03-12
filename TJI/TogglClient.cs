@@ -78,9 +78,9 @@ namespace TJI
                     }
                 }
             }
-            catch (WebException)
+            catch (WebException we)
             {
-                // TODO: Add logging
+                ExceptionHandler.HandleException(we);
             }
 
             return false;
@@ -98,12 +98,19 @@ namespace TJI
             request.CookieContainer = cookieContainer;
             request.Method = "POST";
 
-            using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
+            try
             {
-                if (response.StatusCode == HttpStatusCode.OK)
+                using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
                 {
-                    return true;
+                    if (response.StatusCode == HttpStatusCode.OK)
+                    {
+                        return true;
+                    }
                 }
+            }
+            catch (WebException we)
+            {
+                ExceptionHandler.HandleException(we);
             }
 
             return false;
@@ -122,14 +129,21 @@ namespace TJI
             request.Method = "GET";
             request.ContentType = "application/json";
 
-            using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
-            using (Stream stream = response.GetResponseStream())
+            try
             {
-                if (response.StatusCode == HttpStatusCode.OK)
+                using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
+                using (Stream stream = response.GetResponseStream())
                 {
-                    DataContractJsonSerializer serializer = new DataContractJsonSerializer(typeof(TogglEntry[]));
-                    entries = serializer.ReadObject(stream) as TogglEntry[];
+                    if (response.StatusCode == HttpStatusCode.OK)
+                    {
+                        DataContractJsonSerializer serializer = new DataContractJsonSerializer(typeof(TogglEntry[]));
+                        entries = serializer.ReadObject(stream) as TogglEntry[];
+                    }
                 }
+            }
+            catch (WebException we)
+            {
+                ExceptionHandler.HandleException(we);
             }
 
             if (entries != null)

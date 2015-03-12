@@ -35,6 +35,12 @@ namespace TJI
         private string _password;
         private string _serverUrl;
 
+        /// <summary>
+        /// Creates a client object used to interact with a Jira installation
+        /// </summary>
+        /// <param name="user">The users username in Jira</param>
+        /// <param name="password">The users password in Jira</param>
+        /// <param name="serverUrl">The absolute url to the Jira instance to interact with</param>
         public JiraClient(string user, string password, string serverUrl)
         {
             _username = user;
@@ -42,6 +48,11 @@ namespace TJI
             _serverUrl = serverUrl;
         }
 
+        /// <summary>
+        /// Retreive the worklog from a specific issue
+        /// </summary>
+        /// <param name="issue">Issue key or id</param>
+        /// <returns>A worklog containing all the work registered in the issue</returns>
         public JiraWorklog GetIssueWorklog(string issue)
         {
             JiraWorklog worklog = null;
@@ -49,21 +60,34 @@ namespace TJI
             HttpWebRequest request = GetRequest(string.Format(GET_WORKLOG_URL, issue), true);
             request.Method = "GET";
 
-            using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
-            using (Stream stream = response.GetResponseStream())
-            using (StreamReader reader = new StreamReader(stream))
+            try
             {
-                if (response.StatusCode == HttpStatusCode.OK)
+                using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
+                using (Stream stream = response.GetResponseStream())
+                using (StreamReader reader = new StreamReader(stream))
                 {
-                    DataContractJsonSerializer serializer = new DataContractJsonSerializer(typeof(JiraWorklog));
-                    worklog = serializer.ReadObject(stream) as JiraWorklog;
+                    if (response.StatusCode == HttpStatusCode.OK)
+                    {
+                        DataContractJsonSerializer serializer = new DataContractJsonSerializer(typeof(JiraWorklog));
+                        worklog = serializer.ReadObject(stream) as JiraWorklog;
+                    }
                 }
+            }
+            catch (WebException we)
+            {
+                ExceptionHandler.HandleException(we);
+                worklog = null;
             }
 
             return worklog;
         }
 
-        public void AddWorkEntry(WorkEntry wEntry)
+        /// <summary>
+        /// Adds the gived entry to the worklog of its issue
+        /// </summary>
+        /// <param name="wEntry">Worklog entry to add</param>
+        /// <returns>True if added successfully</returns>
+        public bool AddWorkEntry(WorkEntry wEntry)
         {
             JiraWorkEntry jEntry = new JiraWorkEntry();
             jEntry.Started = GetStartTime(wEntry);
@@ -82,28 +106,35 @@ namespace TJI
                 {
                     if (response.StatusCode == HttpStatusCode.Created)
                     {
-                        Console.WriteLine("Created entry for " + wEntry.IssueID);
-                    }
-                    else
-                    {
-                        Console.WriteLine("Failed to create entry for " + wEntry.IssueID + ": " + response.StatusCode);
+                        return true;
                     }
                 }
             }
             catch (WebException we)
             {
-                Console.WriteLine("Failed to create entry for " + wEntry.IssueID + ": " + we.Message);
+                ExceptionHandler.HandleException(we);
             }
 
-            return;
+            return false;
         }
 
+        /// <summary>
+        /// Returns a string containing the start time of the entry in a correct format for Jira
+        /// </summary>
+        /// <param name="wEntry">Entry to get start time from</param>
+        /// <returns>Start time of the entry in a correctly formatted string</returns>
         private static string GetStartTime(WorkEntry wEntry)
         {
             return wEntry.Start.ToString(TIME_FORMAT) + wEntry.Start.ToString("zzz").Replace(":", "");
         }
 
-        public void SyncWorkEntry(JiraWorkEntry jEntry, WorkEntry wEntry)
+        /// <summary>
+        /// Syncs the Jira entry with the work entry
+        /// </summary>
+        /// <param name="jEntry">Jira entry to update</param>
+        /// <param name="wEntry">Work entry to update Jira with</param>
+        /// <returns>True if updated successfully</returns>
+        public bool SyncWorkEntry(JiraWorkEntry jEntry, WorkEntry wEntry)
         {
             jEntry.TimeSpent = wEntry.TimeSpent;
             jEntry.TimeSpentSeconds = 0;
@@ -120,20 +151,23 @@ namespace TJI
                 {
                     if (response.StatusCode == HttpStatusCode.OK)
                     {
-                        Console.WriteLine("Created entry for " + wEntry.IssueID);
-                    }
-                    else
-                    {
-                        Console.WriteLine("Failed to update entry for " + wEntry.IssueID + ": " + response.StatusCode);
+                        return true;
                     }
                 }
             }
             catch (WebException we)
             {
-                Console.WriteLine("Failed to update entry for " + wEntry.IssueID + ": " + we.Message);
+                ExceptionHandler.HandleException(we);
             }
+
+            return false;
         }
 
+        /// <summary>
+        /// Writes the Jira entry to the request stream
+        /// </summary>
+        /// <param name="jEntry">Entry to write</param>
+        /// <param name="request">Request to write to</param>
         private static void WriteWorkEntry(JiraWorkEntry jEntry, HttpWebRequest request)
         {
             using (Stream outStream = request.GetRequestStream())
@@ -147,6 +181,12 @@ namespace TJI
             }
         }
 
+        /// <summary>
+        /// Builds a request to be used to get or update information in Jira
+        /// </summary>
+        /// <param name="url">Url to send the request to</param>
+        /// <param name="relative">Set to true if url doesn't contain server base url</param>
+        /// <returns>A request with basic configuration</returns>
         private HttpWebRequest GetRequest(string url, bool relative)
         {
             string userpassB64 = Convert.ToBase64String(Encoding.Default.GetBytes(_username + ":" + _password));

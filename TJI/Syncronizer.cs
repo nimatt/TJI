@@ -67,21 +67,28 @@ namespace TJI
             {
                 while (_running)
                 {
-                    if (_togglClient == null || !_togglClient.IsLoggedIn)
-                    {
-                        LogIn();
-                    }
-
-                    if (_togglClient.IsLoggedIn)
-                    {
-                        SyncronizeSystems();
-                    }
-
                     try
                     {
-                        Thread.Sleep(Settings.SyncIntervall * 1000);
+                        if (_togglClient == null || !_togglClient.IsLoggedIn)
+                        {
+                            LogIn();
+                        }
+
+                        if (_togglClient.IsLoggedIn)
+                        {
+                            SyncronizeSystems();
+                        }
+
+                        try
+                        {
+                            Thread.Sleep(Settings.SyncIntervall * 1000);
+                        }
+                        catch (ThreadInterruptedException) { }
                     }
-                    catch (ThreadInterruptedException) { }
+                    catch (Exception e)
+                    {
+                        ExceptionHandler.HandleException(e);
+                    }
                 }
             });
 
@@ -129,8 +136,14 @@ namespace TJI
 
         private void SyncronizeSystems()
         {
+            bool succeded = true;
             DateTime startSyncTime = DateTime.Now;
             TogglEntry[] togglEntries = _togglClient.GetEntries(startSyncTime.AddDays(-2), startSyncTime);
+            if (togglEntries == null)
+            {
+                StatusChange("Failed to get Toggl entries");
+                return;
+            }
 
             List<WorkEntry> workEntries = new List<WorkEntry>();
             foreach (TogglEntry tEntry in togglEntries)
@@ -150,24 +163,53 @@ namespace TJI
             JiraClient jiraClient = new JiraClient(Settings.JiraUsername, Settings.JiraPassword, Settings.JiraServerUrl);
             foreach (IGrouping<string, WorkEntry> entriesForIssue in groupedEntries)
             {
+                // TODO: Handle when issues aren't editable
                 JiraWorklog worklog = jiraClient.GetIssueWorklog(entriesForIssue.Key);
-                foreach (WorkEntry wEntry in entriesForIssue)
+                if (worklog != null)
                 {
-                    JiraWorkEntry jEntry = wEntry.FindMatchingEntry(worklog);
-                    if (jEntry == null)
+                    foreach (WorkEntry wEntry in entriesForIssue)
                     {
-                        StatusChange("Adding entry for " + wEntry.IssueID);
-                        jiraClient.AddWorkEntry(wEntry);
+                        JiraWorkEntry jEntry = wEntry.FindMatchingEntry(worklog);
+                        if (jEntry == null)
+                        {
+                            if (PerformWebOperation(() => jiraClient.AddWorkEntry(wEntry)))
+                                StatusChange("Added entry for " + wEntry.IssueID);
+                            else
+                                StatusChange("Failed to add entry for " + wEntry.IssueID);
+                        }
+                        else if (jEntry.TimeSpentSeconds != (wEntry.DurationInMinutes * 60))
+                        {
+                            if (PerformWebOperation(() => jiraClient.SyncWorkEntry(jEntry, wEntry)))
+                                StatusChange("Updated entry for " + wEntry.IssueID);
+                            else
+                                StatusChange("Failed to update entry for " + wEntry.IssueID);
+                        }
                     }
-                    else if (jEntry.TimeSpentSeconds != (wEntry.DurationInMinutes * 60))
-                    {
-                        StatusChange("Updating entry for " + wEntry.IssueID);
-                        jiraClient.SyncWorkEntry(jEntry, wEntry);
-                    }
+                }
+                else
+                {
+                    StatusChange("Failed to get Jira issue worklog");
+                    succeded = false;
                 }
             }
 
-            _lastSyncTime = startSyncTime;
+            if (succeded)
+            {
+                _lastSyncTime = startSyncTime;
+            }
+        }
+
+        private bool PerformWebOperation(Func<bool> operation)
+        {
+            try
+            {
+                return operation();
+            }
+            catch (Exception)
+            {
+                StatusChange("Exception during web operation");
+                return false;
+            }
         }
     }
 }

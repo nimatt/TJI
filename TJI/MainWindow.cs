@@ -60,6 +60,10 @@ namespace TJI
             jiraUsername.Text = syncronizer.Settings.JiraUsername;
             jiraPassword.Text = syncronizer.Settings.JiraPassword;
             syncSleepTime.Text = syncronizer.Settings.SyncIntervall.ToString();
+            exceptionPath.Text = ExceptionHandler.ExceptionInfoPath;
+            debugCheckbox.Checked = syncronizer.Settings.Debug;
+
+            ExceptionHandler.LogExceptions = syncronizer.Settings.Debug;
 
             FormClosing += MainWindow_FormClosing;
         }
@@ -82,6 +86,7 @@ namespace TJI
             syncronizer.Settings.JiraUsername = jiraUsername.Text;
             syncronizer.Settings.JiraPassword = jiraPassword.Text;
             syncronizer.Settings.SyncIntervall = int.Parse(syncSleepTime.Text);
+            syncronizer.Settings.Debug = debugCheckbox.Checked;
 
             syncronizer.Settings.Save();
         }
@@ -98,6 +103,17 @@ namespace TJI
                 startStopButton.Text = "Stop";
                 syncronizer.Start();
             }
+        }
+
+        private void exceptionPath_TextChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void debugCheckbox_CheckedChanged(object sender, EventArgs e)
+        {
+            syncronizer.Settings.Debug = debugCheckbox.Checked;
+            ExceptionHandler.LogExceptions = syncronizer.Settings.Debug;
         }
     }
 }

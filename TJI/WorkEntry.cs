@@ -79,7 +79,7 @@ namespace TJI
 
         public static WorkEntry Create(TogglEntry entry)
         {
-            return JiraInfo.IsMatch(entry.Description) ? new WorkEntry(entry) : null;
+            return JiraInfo.IsMatch(entry.Description ?? string.Empty) ? new WorkEntry(entry) : null;
         }
 
         internal JiraWorkEntry FindMatchingEntry(JiraWorklog worklog)
