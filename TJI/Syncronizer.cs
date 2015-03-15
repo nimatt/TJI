@@ -15,6 +15,7 @@
  * along with TJI.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+using log4net;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -26,6 +27,8 @@ namespace TJI
 {
     public class Syncronizer
     {
+        private static readonly ILog log = LogManager.GetLogger(typeof(Syncronizer));
+
         public TJISettings Settings { get; private set; }
 
         private TogglClient _togglClient;
@@ -74,7 +77,7 @@ namespace TJI
                             LogIn();
                         }
 
-                        if (_togglClient.IsLoggedIn)
+                        if (_togglClient != null && _togglClient.IsLoggedIn)
                         {
                             SyncronizeSystems();
                         }
@@ -87,7 +90,7 @@ namespace TJI
                     }
                     catch (Exception e)
                     {
-                        ExceptionHandler.HandleException(e);
+                        log.Error("Exception while syncronizing", e);
                     }
                 }
             });
@@ -119,10 +122,12 @@ namespace TJI
             if (_togglClient.LogIn())
             {
                 StatusChange("Logged in to Toggl");
+                log.Info("Logged in to Toggl");
             }
             else
             {
                 StatusChange("Failed to log in to Toggl");
+                log.Warn("Failed to log in to Toggl");
             }
         }
 
@@ -130,7 +135,14 @@ namespace TJI
         {
             if (_togglClient != null && _togglClient.IsLoggedIn)
             {
-                _togglClient.LogOut();
+                if (_togglClient.LogOut())
+                {
+                    log.Info("Logged out from Toggl");
+                }
+                else
+                {
+                    log.Warn("Failed to log out from Toggl");
+                }
             }
         }
 
@@ -142,6 +154,7 @@ namespace TJI
             if (togglEntries == null)
             {
                 StatusChange("Failed to get Toggl entries");
+                log.Error("Failed to get Toggl entries");
                 return;
             }
 
@@ -151,7 +164,12 @@ namespace TJI
                 WorkEntry wEntry = WorkEntry.Create(tEntry);
                 if (wEntry != null)
                 {
+                    log.DebugFormat("Found work entry in Toggl for {0}", wEntry.IssueID);
                     workEntries.Add(wEntry);
+                }
+                else
+                {
+                    log.DebugFormat("Toggl entry is not in valid format{0}{1}", Environment.NewLine, tEntry.Description ?? "<null>");
                 }
             }
 
@@ -173,28 +191,42 @@ namespace TJI
                         if (jEntry == null)
                         {
                             if (PerformWebOperation(() => jiraClient.AddWorkEntry(wEntry)))
+                            {
+                                log.InfoFormat("Added entry for {0}", wEntry.IssueID);
                                 StatusChange("Added entry for " + wEntry.IssueID);
+                            }
                             else
+                            {
+                                log.ErrorFormat("Failed to add entry for {0}", wEntry.IssueID);
                                 StatusChange("Failed to add entry for " + wEntry.IssueID);
+                            }
                         }
                         else if (jEntry.TimeSpentSeconds != (wEntry.DurationInMinutes * 60))
                         {
                             if (PerformWebOperation(() => jiraClient.SyncWorkEntry(jEntry, wEntry)))
+                            {
+                                log.InfoFormat("Syncronized entry for {0}", wEntry.IssueID);
                                 StatusChange("Updated entry for " + wEntry.IssueID);
+                            }
                             else
+                            {
+                                log.ErrorFormat("Failed to syncronize entry for {0}", wEntry.IssueID);
                                 StatusChange("Failed to update entry for " + wEntry.IssueID);
+                            }
                         }
                     }
                 }
                 else
                 {
                     StatusChange("Failed to get Jira issue worklog");
+                    log.ErrorFormat("Unable to get worklog for {0}", entriesForIssue.Key);
                     succeded = false;
                 }
             }
 
             if (succeded)
             {
+                log.Debug("Successfully syncronized systems");
                 _lastSyncTime = startSyncTime;
             }
         }
@@ -205,8 +237,9 @@ namespace TJI
             {
                 return operation();
             }
-            catch (Exception)
+            catch (Exception e)
             {
+                log.Error("Encountered an exception during a web operation", e);
                 StatusChange("Exception during web operation");
                 return false;
             }

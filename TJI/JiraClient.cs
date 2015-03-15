@@ -15,6 +15,7 @@
  * along with TJI.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+using log4net;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -30,6 +31,8 @@ namespace TJI
     {
         private static string GET_WORKLOG_URL = "/rest/api/2/issue/{0}/worklog";
         private const string TIME_FORMAT = "yyyy-MM-ddTHH:mm:ss.fff";
+
+        private static readonly ILog log = LogManager.GetLogger(typeof(JiraClient));
 
         private string _username;
         private string _password;
@@ -57,6 +60,7 @@ namespace TJI
         {
             JiraWorklog worklog = null;
 
+            log.DebugFormat("Getting worklog for {0}", issue);
             HttpWebRequest request = GetRequest(string.Format(GET_WORKLOG_URL, issue), true);
             request.Method = "GET";
 
@@ -68,14 +72,23 @@ namespace TJI
                 {
                     if (response.StatusCode == HttpStatusCode.OK)
                     {
+                        log.Debug("Got an OK from Jira when fetching worklog");
                         DataContractJsonSerializer serializer = new DataContractJsonSerializer(typeof(JiraWorklog));
                         worklog = serializer.ReadObject(stream) as JiraWorklog;
+                        if (worklog != null)
+                        {
+                            log.Debug("Jira worklog serialzed");
+                        }
+                    }
+                    else
+                    {
+                        log.WarnFormat("Didn't get an OK from Jira when fetching worklog for {0}, got {1}.", issue, response.StatusCode);
                     }
                 }
             }
             catch (WebException we)
             {
-                ExceptionHandler.HandleException(we);
+                log.Error("Unable to get worklog", we);
                 worklog = null;
             }
 
@@ -94,6 +107,7 @@ namespace TJI
             jEntry.Comment = wEntry.CommentWithMarker;
             jEntry.TimeSpent = wEntry.TimeSpent;
             
+            log.DebugFormat("Creating a entry for {0} corresponding to {1}.", wEntry.IssueID, wEntry.TogglID);
             HttpWebRequest request = GetRequest(string.Format(GET_WORKLOG_URL, wEntry.IssueID), true);
             request.ContentType = "application/json;charset=UTF-8";
             request.Method = "POST";
@@ -106,13 +120,18 @@ namespace TJI
                 {
                     if (response.StatusCode == HttpStatusCode.Created)
                     {
+                        log.DebugFormat("Work entry created for issue {0}", wEntry.IssueID);
                         return true;
+                    }
+                    else
+                    {
+                        log.WarnFormat("Didn't get the expected status code back when creating a work entry for {0}. Got {1}", wEntry.IssueID, response.StatusCode);
                     }
                 }
             }
             catch (WebException we)
             {
-                ExceptionHandler.HandleException(we);
+                log.Error("Unable add work entry", we);
             }
 
             return false;
@@ -139,6 +158,7 @@ namespace TJI
             jEntry.TimeSpent = wEntry.TimeSpent;
             jEntry.TimeSpentSeconds = 0;
 
+            log.DebugFormat("Syncronizing {0} in {1}", wEntry.TogglID, wEntry.IssueID);
             HttpWebRequest request = GetRequest(jEntry.Self, false);
             request.ContentType = "application/json;charset=UTF-8";
             request.Method = "PUT";
@@ -151,13 +171,18 @@ namespace TJI
                 {
                     if (response.StatusCode == HttpStatusCode.OK)
                     {
+                        log.DebugFormat("Syncronized entry {0} in {1}", wEntry.TogglID, wEntry.IssueID);
                         return true;
+                    }
+                    else
+                    {
+                        log.WarnFormat("Didn't get the expected status code back when syncing a work entry for {0}. Got {1}", wEntry.IssueID, response.StatusCode);
                     }
                 }
             }
             catch (WebException we)
             {
-                ExceptionHandler.HandleException(we);
+                log.Error("Unable to sync web entry", we);
             }
 
             return false;
@@ -178,6 +203,7 @@ namespace TJI
                 serializer.WriteObject(memStream, jEntry);
                 string jsonData = Encoding.UTF8.GetString(memStream.ToArray());
                 writer.Write(jsonData);
+                log.Debug("Work entry written to stream");
             }
         }
 

@@ -1,0 +1,69 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<Wix xmlns='http://wixtoolset.org/schemas/v4/wxs'>
+	<Product Id='*' Name='TJI' Language='1033' Version='1.2.0.0' Manufacturer='Mattias Nilsson' UpgradeCode='c646fd95-d10f-4a33-bf5a-6ce2a2f8d371'>
+		<Package InstallerVersion='200' Compressed='yes' InstallScope='perMachine' />
+
+		<MajorUpgrade DowngradeErrorMessage='A newer version of [ProductName] is already installed.' />
+		<MediaTemplate EmbedCab='yes' />
+
+		<Feature Id='ProductFeature' Title='TJI' Level='1'>
+			<ComponentGroupRef Id='ProductComponents' />
+		</Feature>
+    
+    <Icon Id='TJI.ico' SourceFile='$(var.TJI.ProjectDir)\TJI.ico' />
+    
+    <WixVariable Id="WixUILicenseRtf" Value="$(var.SolutionDir)\gpl.rtf" />
+
+    <Property Id="APPLICATIONFOLDER">
+      <RegistrySearch Id="RegistrySearch" Type='raw' Root='HKLM' Key='Software\Nimatt\TJI' Name='InstallDir' />
+    </Property>
+    <DirectoryRef Id='APPLICATIONFOLDER'>
+      <Component Id="RegistryKeyInstallPath" Guid="*">
+        <RegistryValue Root='HKLM' Key='Software\Nimatt\TJI' Name='InstallDir' Value='[INSTALLDIR]' Type='string' KeyPath='yes'/>
+      </Component>
+    </DirectoryRef>
+
+    <Property Id="ApplicationFolderName" Value="TJI" />
+    <Property Id="WixAppFolder" Value="WixPerMachineFolder" />
+    <WixVariable Id="WixUISupportPerUser" Value="0" />
+    
+    <UIRef Id="WixUI_Advanced" />
+    <UIRef Id="WixUI_ErrorProgressText" />
+	</Product>
+
+	<Fragment>
+		<Directory Id='TARGETDIR' Name='SourceDir'>
+			<Directory Id='ProgramFilesFolder'>
+				<Directory Id='APPLICATIONFOLDER' Name='TJI' />
+			</Directory>
+      <Directory Id='ProgramMenuFolder'/>
+		</Directory>
+	</Fragment>
+
+	<Fragment>
+		<ComponentGroup Id='ProductComponents' Directory='APPLICATIONFOLDER'>
+			<Component Id='MainExecutable' Guid='bdbb051f-60f5-4984-b59d-346a110ab78e'>
+        <File Id='TJIEXE' Name='$(var.TJI.TargetFileName)' Source='$(var.TJI.TargetPath)' KeyPath='yes'>
+          <Shortcut Id='startmenuTJI' Directory='ProgramMenuFolder' Name='TJI'
+                  WorkingDirectory='INSTALLDIR' Icon='TJI.ico' IconIndex='0' Advertise='yes' />
+        </File>
+      </Component>
+      <Component Id='AppConfig' Guid='f58edac9-df31-4cc6-806a-afed3a12d4f4'>
+        <File Id='AppConfigFile' Name='TJI.exe.config' Source='$(var.TJI.TargetDir)\TJI.exe.config' KeyPath='yes' />
+			</Component>
+      <ComponentRef Id="RegistryKeyInstallPath"/>
+      <Component Id='LogginLibrary' Guid='67d04981-f530-4e33-a1df-08ec75a077bd'>
+        <File Id='Log4NetDLL' Name='log4net.dll' Source='$(var.TJI.TargetDir)\log4net.dll' KeyPath='yes' />
+      </Component>
+      <Component Id='Cleaning' Guid='b40cb353-8b0d-4cdf-8e13-166c434332d6'>
+        <RemoveFile Id="PurgeAppFolder" Name="*.*" On="uninstall" />
+        <RemoveFolder Id="DeleteFolder" On="uninstall" />
+      </Component>
+      <Component Id='RegistryEntries' Guid='022d52c8-af42-427a-b92a-0d06f763ae34'>
+        <RegistryKey Key="Software\Nimatt\TJI" Root="HKLM" ForceCreateOnInstall="yes">
+          <RegistryValue Id="TJIRegInstallDir" Type="string" Name="InstallDir" Value="[APPLICATIONFOLDER]" />
+        </RegistryKey>
+      </Component>
+		</ComponentGroup>
+	</Fragment>
+</Wix>

@@ -46,9 +46,6 @@
             this.tabControl1 = new System.Windows.Forms.TabControl();
             this.tabPage1 = new System.Windows.Forms.TabPage();
             this.tabPage2 = new System.Windows.Forms.TabPage();
-            this.debugCheckbox = new System.Windows.Forms.CheckBox();
-            this.label6 = new System.Windows.Forms.Label();
-            this.exceptionPath = new System.Windows.Forms.TextBox();
             this.tabControl1.SuspendLayout();
             this.tabPage1.SuspendLayout();
             this.tabPage2.SuspendLayout();
@@ -192,9 +189,6 @@
             // 
             // tabPage2
             // 
-            this.tabPage2.Controls.Add(this.debugCheckbox);
-            this.tabPage2.Controls.Add(this.label6);
-            this.tabPage2.Controls.Add(this.exceptionPath);
             this.tabPage2.Controls.Add(this.label5);
             this.tabPage2.Controls.Add(this.syncSleepTime);
             this.tabPage2.Location = new System.Drawing.Point(4, 22);
@@ -204,35 +198,6 @@
             this.tabPage2.TabIndex = 1;
             this.tabPage2.Text = "Advanced";
             this.tabPage2.UseVisualStyleBackColor = true;
-            // 
-            // debugCheckbox
-            // 
-            this.debugCheckbox.AutoSize = true;
-            this.debugCheckbox.Location = new System.Drawing.Point(7, 87);
-            this.debugCheckbox.Name = "debugCheckbox";
-            this.debugCheckbox.Size = new System.Drawing.Size(58, 17);
-            this.debugCheckbox.TabIndex = 14;
-            this.debugCheckbox.Text = "Debug";
-            this.debugCheckbox.UseVisualStyleBackColor = true;
-            this.debugCheckbox.CheckedChanged += new System.EventHandler(this.debugCheckbox_CheckedChanged);
-            // 
-            // label6
-            // 
-            this.label6.AutoSize = true;
-            this.label6.Location = new System.Drawing.Point(6, 43);
-            this.label6.Name = "label6";
-            this.label6.Size = new System.Drawing.Size(98, 13);
-            this.label6.TabIndex = 12;
-            this.label6.Text = "Exception info path";
-            // 
-            // exceptionPath
-            // 
-            this.exceptionPath.Location = new System.Drawing.Point(3, 60);
-            this.exceptionPath.Name = "exceptionPath";
-            this.exceptionPath.ReadOnly = true;
-            this.exceptionPath.Size = new System.Drawing.Size(267, 20);
-            this.exceptionPath.TabIndex = 13;
-            this.exceptionPath.TextChanged += new System.EventHandler(this.exceptionPath_TextChanged);
             // 
             // MainWindow
             // 
@@ -275,9 +240,6 @@
         private System.Windows.Forms.TabControl tabControl1;
         private System.Windows.Forms.TabPage tabPage1;
         private System.Windows.Forms.TabPage tabPage2;
-        private System.Windows.Forms.CheckBox debugCheckbox;
-        private System.Windows.Forms.Label label6;
-        private System.Windows.Forms.TextBox exceptionPath;
 
     }
 }

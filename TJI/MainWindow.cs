@@ -15,6 +15,7 @@
  * along with TJI.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+using log4net;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -25,15 +26,20 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
+[assembly: log4net.Config.XmlConfigurator(ConfigFile = "TJI.exe.config", Watch = true)]  
 namespace TJI
 {
     public partial class MainWindow : Form
     {
+        private static readonly ILog log = LogManager.GetLogger(typeof(MainWindow));
+
         Syncronizer syncronizer;
 
         public MainWindow()
         {
+            log.Debug("Initializing window");
             InitializeComponent();
+            log.Debug("Main window initialized");
         }
 
         private void notifyIcon1_MouseDoubleClick(object sender, MouseEventArgs e)
@@ -60,17 +66,20 @@ namespace TJI
             jiraUsername.Text = syncronizer.Settings.JiraUsername;
             jiraPassword.Text = syncronizer.Settings.JiraPassword;
             syncSleepTime.Text = syncronizer.Settings.SyncIntervall.ToString();
-            exceptionPath.Text = ExceptionHandler.ExceptionInfoPath;
-            debugCheckbox.Checked = syncronizer.Settings.Debug;
-
-            ExceptionHandler.LogExceptions = syncronizer.Settings.Debug;
 
             FormClosing += MainWindow_FormClosing;
+
+            if (syncronizer.Settings.HasSettings)
+            {
+                StartSyncronization();
+            }
         }
 
         void MainWindow_FormClosing(object sender, FormClosingEventArgs e)
         {
             syncronizer.Stop();
+            TrayIcon.Visible = false;
+            TrayIcon.Dispose();
         }
 
         void syncronizer_StatusChange(string status)
@@ -81,39 +90,42 @@ namespace TJI
 
         private void saveSettingsButton_Click(object sender, EventArgs e)
         {
+            log.Debug("Saving settings");
+
             syncronizer.Settings.TogglApiToken = togglApiToken.Text;
             syncronizer.Settings.JiraServerUrl = jiraServerUrl.Text;
             syncronizer.Settings.JiraUsername = jiraUsername.Text;
             syncronizer.Settings.JiraPassword = jiraPassword.Text;
             syncronizer.Settings.SyncIntervall = int.Parse(syncSleepTime.Text);
-            syncronizer.Settings.Debug = debugCheckbox.Checked;
 
             syncronizer.Settings.Save();
+            log.Debug("Settings saved");
         }
 
         private void startStopButton_Click(object sender, EventArgs e)
         {
             if (syncronizer.IsRunning)
             {
-                startStopButton.Text = "Start";
-                syncronizer.Stop();
+                StopSyncronization();
             }
             else
             {
-                startStopButton.Text = "Stop";
-                syncronizer.Start();
+                StartSyncronization();
             }
         }
 
-        private void exceptionPath_TextChanged(object sender, EventArgs e)
+        private void StopSyncronization()
         {
-
+            log.Info("Stopping syncronization");
+            startStopButton.Text = "Start";
+            syncronizer.Stop();
         }
 
-        private void debugCheckbox_CheckedChanged(object sender, EventArgs e)
+        private void StartSyncronization()
         {
-            syncronizer.Settings.Debug = debugCheckbox.Checked;
-            ExceptionHandler.LogExceptions = syncronizer.Settings.Debug;
+            log.Info("Starting syncronization");
+            startStopButton.Text = "Stop";
+            syncronizer.Start();
         }
     }
 }

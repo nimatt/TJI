@@ -107,10 +107,6 @@ namespace TJI
             loadedSettings.JiraUsername = JiraUsername;
             loadedSettings.JiraPassword = Encrypt(JiraPassword);
             loadedSettings.SyncIntervall = SyncIntervall;
-
-            
-            
-            
             
             loadedSettings.Debug = Debug;
 
