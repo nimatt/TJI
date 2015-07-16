@@ -41,6 +41,21 @@ namespace TJI
         private string _apiToken;
         private Cookie authCookie = null;
 
+        public event Action LogonSucceded;
+        public event Action LogonFailed;
+        
+        public event Action LogoutSucceded;
+        public event Action LogoutFailed;
+
+        public event Action<TogglEntry[], DateTime> FetchedEntries;
+        public event Action<string> FetchingEntriesFailed;
+        
+        public bool EncounteredError
+        {
+            get;
+            private set;
+        }
+
         public bool IsLoggedIn
         {
             get
@@ -58,7 +73,7 @@ namespace TJI
             _apiToken = apiToken;
         }
 
-        public bool LogIn()
+        public void LogIn()
         {
             string userpass = _apiToken + ":api_token";
             string userpassB64 = Convert.ToBase64String(Encoding.Default.GetBytes(userpass.Trim()));
@@ -81,32 +96,37 @@ namespace TJI
                         {
                             authCookie = new Cookie(COOKIE_NAME, cookieMatch.Groups["contents"].Value, cookieMatch.Groups["path"].Value, cookieMatch.Groups["domain"].Value);
                             log.Debug("Logged in to Toggl");
-                            return true;
+                            EncounteredError = false;
+                            LogonSucceded();
                         }
                         else
                         {
                             log.WarnFormat("Response to log in from Toggl didn't contain a Set-Cookie in the format {0}.{1}Instead we got: {2}",
                                 CookieContents.ToString(), Environment.NewLine, headers["Set-Cookie"]);
+                            EncounteredError = true;
+                            LogonFailed();
                         }
                     }
                     else
                     {
                         log.WarnFormat("Response to log in from Toggl didn't contain a Set-Cookie header. Status received is {0}", response.StatusCode);
+                        EncounteredError = true;
+                        LogonFailed();
                     }
                 }
             }
             catch (WebException we)
             {
                 log.Error("Error during log in to Toggl", we);
+                EncounteredError = true;
+                LogonFailed();
             }
-
-            return false;
         }
 
-        public bool LogOut()
+        public void LogOut()
         {
             if (authCookie == null)
-                return false;
+                return;
 
             CookieContainer cookieContainer = new CookieContainer();
             cookieContainer.Add(authCookie);
@@ -122,26 +142,31 @@ namespace TJI
                 {
                     if (response.StatusCode == HttpStatusCode.OK)
                     {
+                        EncounteredError = false;
+                        authCookie = null;
                         log.Debug("Logged out from Toggl");
-                        return true;
+                        LogoutSucceded();
                     }
                     else
                     {
+                        EncounteredError = true;
                         log.Debug("Failed to log out from Toggl");
+                        LogoutFailed();
                     }
                 }
             }
             catch (WebException we)
             {
+                EncounteredError = true;
                 log.Error("Error during log out from Toggl", we);
+                LogoutFailed();
             }
-
-            return false;
         }
 
-        public TogglEntry[] GetEntries(DateTime from, DateTime to)
+        public void GetEntries(DateTime from, DateTime to)
         {
             TogglEntry[] entries = null;
+            string errorMessage = string.Empty;
             string completeUrl = string.Format("{0}?start_date={1}&end_date={2}", ENTRIES_URL, GetFormattedTime(from), GetFormattedTime(to));
 
             CookieContainer cookieContainer = new CookieContainer();
@@ -161,9 +186,22 @@ namespace TJI
                     if (response.StatusCode == HttpStatusCode.OK)
                     {
                         log.Debug("Got a OK when getting entries from Toggl");
-                        DataContractJsonSerializer serializer = new DataContractJsonSerializer(typeof(TogglEntry[]));
-                        entries = serializer.ReadObject(stream) as TogglEntry[];
-                        if (entries.Length > 0)
+                        try
+                        {
+                            DataContractJsonSerializer serializer = new DataContractJsonSerializer(typeof(TogglEntry[]));
+                            entries = serializer.ReadObject(stream) as TogglEntry[];
+                        }
+                        catch (FormatException fe)
+                        {
+                            errorMessage = "Invalid response from server";
+                            log.Error("Error while parsing Toggl server response", fe);
+                        }
+                        if (entries == null)
+                        {
+                            log.Error("Serializing Toggl server response gave null");
+                            errorMessage = "Invalid response from server";
+                        }
+                        else if (entries.Length > 0)
                         {
                             log.InfoFormat("Got {0} entries from Toggl", entries.Length);
                         }
@@ -174,31 +212,44 @@ namespace TJI
                     }
                     else
                     {
+                        errorMessage = string.Format("Server returned '{0}'", response.StatusCode);
                         log.WarnFormat("Did not get an OK when fetching entries from Toggle {0}", response.StatusCode);
                     }
                 }
             }
             catch (WebException we)
             {
+                errorMessage = we.Message;
                 log.Error("Exception while getting Toggl entries", we);
             }
 
             if (entries != null)
             {
-                entries = (from e in entries
-                           where e.Duration > 30
-                           select e).ToArray();
-
-                if (entries.Length > 0)
-                {
-                    log.InfoFormat("{0} entries exceed 30 seconds", entries.Length);
-                }
-                else
-                {
-                    log.Debug("No entries exceeding 30 seconds");
-                }
+                EncounteredError = false;
+                entries = RemoveTooShortEntries(entries);
+                FetchedEntries(entries, to);
             }
+            else
+            {
+                EncounteredError = true;
+                FetchingEntriesFailed(errorMessage);
+            }
+        }
 
+        private static TogglEntry[] RemoveTooShortEntries(TogglEntry[] entries)
+        {
+            entries = (from e in entries
+                       where e.Duration > 30
+                       select e).ToArray();
+
+            if (entries.Length > 0)
+            {
+                log.InfoFormat("{0} entries exceed 30 seconds", entries.Length);
+            }
+            else
+            {
+                log.Debug("No entries exceeding 30 seconds");
+            }
             return entries;
         }
 

@@ -32,6 +32,7 @@ namespace TJI
     public partial class MainWindow : Form
     {
         private static readonly ILog log = LogManager.GetLogger(typeof(MainWindow));
+        private delegate void UpdateStatus(string message, SyncronizerStatus status);
 
         Syncronizer syncronizer;
 
@@ -82,10 +83,40 @@ namespace TJI
             TrayIcon.Dispose();
         }
 
-        void syncronizer_StatusChange(string status)
+        void syncronizer_StatusChange(string message, SyncronizerStatus status)
         {
-            TrayIcon.BalloonTipText = status;
+            if (InvokeRequired)
+            {
+                Invoke(new UpdateStatus(syncronizer_StatusChange), new object[] {message, status});
+                return;
+            }
+
+            TrayIcon.BalloonTipText = message;
             TrayIcon.ShowBalloonTip(3000);
+            switch (status)
+            {
+                case SyncronizerStatus.Stopped:
+                    SetIcon(TJI.Properties.Resources.StandardIcon);
+                    break;
+                case SyncronizerStatus.Processing:
+                    SetIcon(TJI.Properties.Resources.RunningIcon);
+                    break;
+                case SyncronizerStatus.Sleeping:
+                    SetIcon(TJI.Properties.Resources.RunningIcon);
+                    break;
+                case SyncronizerStatus.Error:
+                    SetIcon(TJI.Properties.Resources.ErrorIcon);
+                    break;
+                default:
+                    SetIcon(TJI.Properties.Resources.ErrorIcon);
+                    break;
+            }
+        }
+
+        private void SetIcon(Icon newIcon)
+        {
+            TrayIcon.Icon = newIcon;
+            Icon = newIcon;
         }
 
         private void saveSettingsButton_Click(object sender, EventArgs e)
@@ -99,6 +130,8 @@ namespace TJI
             syncronizer.Settings.SyncIntervall = int.Parse(syncSleepTime.Text);
 
             syncronizer.Settings.Save();
+            syncronizer.Stop();
+            syncronizer.Start();
             log.Debug("Settings saved");
         }
 
@@ -126,6 +159,11 @@ namespace TJI
             log.Info("Starting syncronization");
             startStopButton.Text = "Stop";
             syncronizer.Start();
+        }
+
+        private void minimize_Click(object sender, EventArgs e)
+        {
+            Hide();
         }
     }
 }

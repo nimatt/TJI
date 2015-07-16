@@ -31,10 +31,55 @@ namespace TJI
 
         public TJISettings Settings { get; private set; }
 
-        private TogglClient _togglClient;
         private bool _running = false;
         private Thread _syncThread;
         private DateTime _lastSyncTime = DateTime.MinValue;
+
+        private TogglClient _togglClient;
+        private TogglClient Toggl
+        {
+            get
+            {
+                if (_togglClient == null && Settings.HasSettings)
+                {
+                    _togglClient = new TogglClient(Settings.TogglApiToken);
+                    _togglClient.LogonSucceded += Toggl_LogonSucceded;
+                    _togglClient.LogonFailed += Toggl_LogonFailed;
+                    _togglClient.LogoutSucceded += Toggl_LogoutSucceded;
+                    _togglClient.LogoutFailed += Toggl_LogoutFailed;
+                    _togglClient.FetchedEntries += Toggl_FetchedEntries;
+                    _togglClient.FetchingEntriesFailed += Toggl_FetchingEntriesFailed;
+                }
+
+                return _togglClient;
+            }
+            set
+            {
+                _togglClient = value;
+            }
+        }
+
+        private JiraClient _jiraClient;
+        private JiraClient Jira
+        {
+            get
+            {
+                if (_jiraClient == null)
+                {
+                    _jiraClient = new JiraClient(Settings.JiraUsername, Settings.JiraPassword, Settings.JiraServerUrl);
+                    _jiraClient.WorkEntryCreated += Jira_WorkEntryCreated;
+                    _jiraClient.WorkEntryCreationFailed += Jira_WorkEntryCreationFailed;
+                    _jiraClient.WorkEntryUpdated += Jira_WorkEntryUpdated;
+                    _jiraClient.WorkEntryUpdateFailed += Jira_WorkEntryUpdateFailed;
+                }
+
+                return _jiraClient;
+            }
+            set
+            {
+                _jiraClient = value;
+            }
+        }
 
         public bool IsRunning
         {
@@ -44,16 +89,39 @@ namespace TJI
             }
         }
 
-        public event Action<string> StatusChange;
+        public SyncronizerStatus Status
+        {
+            get
+            {
+                SyncronizerStatus status = SyncronizerStatus.Unknown;
+
+                if (!IsRunning)
+                {
+                    status = SyncronizerStatus.Stopped;
+                }
+                else if (Toggl == null || Toggl.EncounteredError || Jira == null || Jira.EncounteredError)
+                {
+                    status = SyncronizerStatus.Error;
+                }
+                else if (Toggl.IsLoggedIn)
+                {
+                    status = SyncronizerStatus.Sleeping;
+                }
+
+                return status;
+            }
+        }
+
+        public event Action<string, SyncronizerStatus> StatusChange;
+
+        private void StatusChangeInternal(string msg)
+        {
+            StatusChange(msg, Status);
+        }
 
         public Syncronizer()
         {
             Settings = new TJISettings();
-
-            if (Settings.HasSettings)
-            {
-                _togglClient = new TogglClient(Settings.TogglApiToken);
-            }
         }
 
         public void Start()
@@ -64,7 +132,8 @@ namespace TJI
             _running = true;
 
             LogOut();
-            _togglClient = null;
+            Toggl = null;
+            Jira = null;
 
             _syncThread = new Thread((ThreadStart) delegate
             {
@@ -72,14 +141,15 @@ namespace TJI
                 {
                     try
                     {
-                        if (_togglClient == null || !_togglClient.IsLoggedIn)
+                        if (Toggl == null || !Toggl.IsLoggedIn)
                         {
                             LogIn();
                         }
 
-                        if (_togglClient != null && _togglClient.IsLoggedIn)
+                        if (Toggl != null && Toggl.IsLoggedIn)
                         {
-                            SyncronizeSystems();
+                            DateTime startSyncTime = DateTime.Now;
+                            Toggl.GetEntries(startSyncTime.AddDays(-2), startSyncTime);
                         }
 
                         try
@@ -111,53 +181,62 @@ namespace TJI
 
         private void LogIn()
         {
-            if (!Settings.HasSettings)
-                return;
-
-            if (_togglClient == null)
+            if (Settings.HasSettings)
             {
-                _togglClient = new TogglClient(Settings.TogglApiToken);
-            }
-
-            if (_togglClient.LogIn())
-            {
-                StatusChange("Logged in to Toggl");
-                log.Info("Logged in to Toggl");
-            }
-            else
-            {
-                StatusChange("Failed to log in to Toggl");
-                log.Warn("Failed to log in to Toggl");
+                Toggl.LogIn();
             }
         }
 
         private void LogOut()
         {
-            if (_togglClient != null && _togglClient.IsLoggedIn)
+            if (Toggl != null && Toggl.IsLoggedIn)
             {
-                if (_togglClient.LogOut())
-                {
-                    log.Info("Logged out from Toggl");
-                }
-                else
-                {
-                    log.Warn("Failed to log out from Toggl");
-                }
+                Toggl.LogOut();
             }
         }
 
-        private void SyncronizeSystems()
+        private void SyncTogglEntries(TogglEntry[] togglEntries, DateTime startSyncTime)
         {
             bool succeded = true;
-            DateTime startSyncTime = DateTime.Now;
-            TogglEntry[] togglEntries = _togglClient.GetEntries(startSyncTime.AddDays(-2), startSyncTime);
-            if (togglEntries == null)
+            bool changedIssue = false;
+            List<WorkEntry> workEntries = TranslateEntries(togglEntries);
+
+            IEnumerable<IGrouping<string, WorkEntry>> groupedEntries = from e in workEntries
+                                                                       where e.Updated > _lastSyncTime
+                                                                       group e by e.IssueID into eg
+                                                                       select eg;
+
+            JiraClient jiraClient = Jira;
+            foreach (IGrouping<string, WorkEntry> entriesForIssue in groupedEntries)
             {
-                StatusChange("Failed to get Toggl entries");
-                log.Error("Failed to get Toggl entries");
-                return;
+                // TODO: Handle when issues aren't editable
+                JiraWorklog worklog = jiraClient.GetIssueWorklog(entriesForIssue.Key);
+                if (worklog != null)
+                {
+                    SyncronizeWorklog(worklog, entriesForIssue);
+                    changedIssue = true;
+                }
+                else
+                {
+                    StatusChangeInternal("Failed to get Jira issue worklog");
+                    log.ErrorFormat("Unable to get worklog for {0}", entriesForIssue.Key);
+                    succeded = false;
+                }
             }
 
+            if (succeded)
+            {
+                if (changedIssue)
+                {
+                    StatusChangeInternal("Syncronized successfully");
+                }
+                log.Debug("Successfully syncronized systems");
+                _lastSyncTime = startSyncTime;
+            }
+        }
+
+        private static List<WorkEntry> TranslateEntries(TogglEntry[] togglEntries)
+        {
             List<WorkEntry> workEntries = new List<WorkEntry>();
             foreach (TogglEntry tEntry in togglEntries)
             {
@@ -172,77 +251,84 @@ namespace TJI
                     log.DebugFormat("Toggl entry is not in valid format{0}{1}", Environment.NewLine, tEntry.Description ?? "<null>");
                 }
             }
+            return workEntries;
+        }
 
-            IEnumerable<IGrouping<string, WorkEntry>> groupedEntries = from e in workEntries
-                                                                       where e.Updated > _lastSyncTime
-                                                                       group e by e.IssueID into eg
-                                                                       select eg;
-
-            JiraClient jiraClient = new JiraClient(Settings.JiraUsername, Settings.JiraPassword, Settings.JiraServerUrl);
-            foreach (IGrouping<string, WorkEntry> entriesForIssue in groupedEntries)
+        private void SyncronizeWorklog(JiraWorklog worklog, IEnumerable<WorkEntry> entriesForIssue)
+        {
+            foreach (WorkEntry wEntry in entriesForIssue)
             {
-                // TODO: Handle when issues aren't editable
-                JiraWorklog worklog = jiraClient.GetIssueWorklog(entriesForIssue.Key);
-                if (worklog != null)
+                JiraWorkEntry jEntry = wEntry.FindMatchingEntry(worklog);
+                if (jEntry == null)
                 {
-                    foreach (WorkEntry wEntry in entriesForIssue)
-                    {
-                        JiraWorkEntry jEntry = wEntry.FindMatchingEntry(worklog);
-                        if (jEntry == null)
-                        {
-                            if (PerformWebOperation(() => jiraClient.AddWorkEntry(wEntry)))
-                            {
-                                log.InfoFormat("Added entry for {0}", wEntry.IssueID);
-                                StatusChange("Added entry for " + wEntry.IssueID);
-                            }
-                            else
-                            {
-                                log.ErrorFormat("Failed to add entry for {0}", wEntry.IssueID);
-                                StatusChange("Failed to add entry for " + wEntry.IssueID);
-                            }
-                        }
-                        else if (jEntry.TimeSpentSeconds != (wEntry.DurationInMinutes * 60))
-                        {
-                            if (PerformWebOperation(() => jiraClient.SyncWorkEntry(jEntry, wEntry)))
-                            {
-                                log.InfoFormat("Syncronized entry for {0}", wEntry.IssueID);
-                                StatusChange("Updated entry for " + wEntry.IssueID);
-                            }
-                            else
-                            {
-                                log.ErrorFormat("Failed to syncronize entry for {0}", wEntry.IssueID);
-                                StatusChange("Failed to update entry for " + wEntry.IssueID);
-                            }
-                        }
-                    }
+                    Jira.AddWorkEntry(wEntry);
                 }
-                else
+                else if (jEntry.TimeSpentSeconds != (wEntry.DurationInMinutes * 60))
                 {
-                    StatusChange("Failed to get Jira issue worklog");
-                    log.ErrorFormat("Unable to get worklog for {0}", entriesForIssue.Key);
-                    succeded = false;
+                    Jira.SyncWorkEntry(jEntry, wEntry);
                 }
-            }
-
-            if (succeded)
-            {
-                log.Debug("Successfully syncronized systems");
-                _lastSyncTime = startSyncTime;
             }
         }
 
-        private bool PerformWebOperation(Func<bool> operation)
+        private void Toggl_FetchedEntries(TogglEntry[] entries, DateTime to)
         {
-            try
+            if (entries != null && entries.Length > 0)
             {
-                return operation();
+                SyncTogglEntries(entries, to);
             }
-            catch (Exception e)
-            {
-                log.Error("Encountered an exception during a web operation", e);
-                StatusChange("Exception during web operation");
-                return false;
-            }
+        }
+
+        private void Toggl_FetchingEntriesFailed(string errorMsg)
+        {
+            StatusChangeInternal("Failed to get Toggl entries: " + errorMsg);
+            log.Error("Failed to get Toggl entries");
+        }
+
+        private void Toggl_LogonSucceded()
+        {
+            StatusChange("Logged in to Toggl", Status);
+            log.Info("Logged in to Toggl");
+        }
+
+        private void Toggl_LogonFailed()
+        {
+            StatusChange("Failed to log in to Toggl", Status);
+            log.Warn("Failed to log in to Toggl");
+        }
+
+        private void Toggl_LogoutSucceded()
+        {
+            log.Info("Logged out from Toggl");
+        }
+
+        private void Toggl_LogoutFailed()
+        {
+            StatusChange("Failed to log out from Toggl", Status);
+            log.Warn("Failed to log out from Toggl");
+        }
+
+        private void Jira_WorkEntryUpdated(WorkEntry wEntry)
+        {
+            log.InfoFormat("Syncronized entry for {0}", wEntry.IssueID);
+            StatusChangeInternal("Updated entry for " + wEntry.IssueID);
+        }
+
+        private void Jira_WorkEntryUpdateFailed(WorkEntry wEntry)
+        {
+            log.ErrorFormat("Failed to syncronize entry for {0}", wEntry.IssueID);
+            StatusChangeInternal("Failed to update entry for " + wEntry.IssueID);
+        }
+
+        private void Jira_WorkEntryCreated(WorkEntry wEntry)
+        {
+            log.InfoFormat("Added entry for {0}", wEntry.IssueID);
+            StatusChangeInternal("Added entry for " + wEntry.IssueID);
+        }
+
+        private void Jira_WorkEntryCreationFailed(WorkEntry wEntry)
+        {
+            log.ErrorFormat("Failed to add entry for {0}", wEntry.IssueID);
+            StatusChangeInternal("Failed to add entry for " + wEntry.IssueID);
         }
     }
 }

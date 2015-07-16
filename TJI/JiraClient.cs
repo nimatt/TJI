@@ -38,6 +38,17 @@ namespace TJI
         private string _password;
         private string _serverUrl;
 
+        public bool EncounteredError
+        {
+            get;
+            private set;
+        }
+
+        public event Action<WorkEntry> WorkEntryCreated;
+        public event Action<WorkEntry> WorkEntryCreationFailed;
+        public event Action<WorkEntry> WorkEntryUpdated;
+        public event Action<WorkEntry> WorkEntryUpdateFailed;
+
         /// <summary>
         /// Creates a client object used to interact with a Jira installation
         /// </summary>
@@ -92,6 +103,8 @@ namespace TJI
                 worklog = null;
             }
 
+            EncounteredError = worklog == null;
+
             return worklog;
         }
 
@@ -112,28 +125,33 @@ namespace TJI
             request.ContentType = "application/json;charset=UTF-8";
             request.Method = "POST";
 
-            WriteWorkEntry(jEntry, request);
-
             try
             {
+                WriteWorkEntry(jEntry, request);
+
                 using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
                 {
                     if (response.StatusCode == HttpStatusCode.Created)
                     {
                         log.DebugFormat("Work entry created for issue {0}", wEntry.IssueID);
+                        EncounteredError = false;
+                        WorkEntryCreated(wEntry);
                         return true;
                     }
                     else
                     {
+                        WorkEntryCreationFailed(wEntry);
                         log.WarnFormat("Didn't get the expected status code back when creating a work entry for {0}. Got {1}", wEntry.IssueID, response.StatusCode);
                     }
                 }
             }
             catch (WebException we)
             {
+                WorkEntryCreationFailed(wEntry);
                 log.Error("Unable add work entry", we);
             }
 
+            EncounteredError = true;
             return false;
         }
 
@@ -163,25 +181,31 @@ namespace TJI
             request.ContentType = "application/json;charset=UTF-8";
             request.Method = "PUT";
 
-            WriteWorkEntry(jEntry, request);
-
             try
             {
+                WriteWorkEntry(jEntry, request);
+
                 using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
                 {
                     if (response.StatusCode == HttpStatusCode.OK)
                     {
+                        EncounteredError = false;
+                        WorkEntryUpdated(wEntry);
                         log.DebugFormat("Syncronized entry {0} in {1}", wEntry.TogglID, wEntry.IssueID);
                         return true;
                     }
                     else
                     {
+                        EncounteredError = true;
+                        WorkEntryUpdateFailed(wEntry);
                         log.WarnFormat("Didn't get the expected status code back when syncing a work entry for {0}. Got {1}", wEntry.IssueID, response.StatusCode);
                     }
                 }
             }
             catch (WebException we)
             {
+                EncounteredError = true;
+                WorkEntryUpdateFailed(wEntry);
                 log.Error("Unable to sync web entry", we);
             }
 
