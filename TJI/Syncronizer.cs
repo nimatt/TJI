@@ -47,7 +47,6 @@ namespace TJI
                     _togglClient.LogonFailed += Toggl_LogonFailed;
                     _togglClient.LogoutSucceded += Toggl_LogoutSucceded;
                     _togglClient.LogoutFailed += Toggl_LogoutFailed;
-                    _togglClient.FetchedEntries += Toggl_FetchedEntries;
                     _togglClient.FetchingEntriesFailed += Toggl_FetchingEntriesFailed;
                 }
 
@@ -105,7 +104,7 @@ namespace TJI
                 }
                 else if (Toggl.IsLoggedIn)
                 {
-                    status = SyncronizerStatus.Sleeping;
+                    status = Jira.Connected ? SyncronizerStatus.Sleeping : SyncronizerStatus.Stopped;
                 }
 
                 return status;
@@ -149,7 +148,12 @@ namespace TJI
                         if (Toggl != null && Toggl.IsLoggedIn)
                         {
                             DateTime startSyncTime = DateTime.Now;
-                            Toggl.GetEntries(startSyncTime.AddDays(-2), startSyncTime);
+                            IEnumerable<TogglEntry> entries = Toggl.GetEntries(startSyncTime.AddDays(-2), startSyncTime);
+
+                            if (entries != null && entries.Any())
+                            {
+                                SyncTogglEntries(entries, startSyncTime);
+                            }
                         }
 
                         try
@@ -195,7 +199,7 @@ namespace TJI
             }
         }
 
-        private void SyncTogglEntries(TogglEntry[] togglEntries, DateTime startSyncTime)
+        private void SyncTogglEntries(IEnumerable<TogglEntry> togglEntries, DateTime startSyncTime)
         {
             bool succeded = true;
             bool changedIssue = false;
@@ -235,7 +239,7 @@ namespace TJI
             }
         }
 
-        private static List<WorkEntry> TranslateEntries(TogglEntry[] togglEntries)
+        private static List<WorkEntry> TranslateEntries(IEnumerable<TogglEntry> togglEntries)
         {
             List<WorkEntry> workEntries = new List<WorkEntry>();
             foreach (TogglEntry tEntry in togglEntries)
@@ -267,14 +271,6 @@ namespace TJI
                 {
                     Jira.SyncWorkEntry(jEntry, wEntry);
                 }
-            }
-        }
-
-        private void Toggl_FetchedEntries(TogglEntry[] entries, DateTime to)
-        {
-            if (entries != null && entries.Length > 0)
-            {
-                SyncTogglEntries(entries, to);
             }
         }
 

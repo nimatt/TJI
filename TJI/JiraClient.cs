@@ -44,6 +44,12 @@ namespace TJI
             private set;
         }
 
+        public bool Connected
+        {
+            get;
+            private set;
+        }
+
         public event Action<WorkEntry> WorkEntryCreated;
         public event Action<WorkEntry> WorkEntryCreationFailed;
         public event Action<WorkEntry> WorkEntryUpdated;
@@ -83,6 +89,7 @@ namespace TJI
                 {
                     if (response.StatusCode == HttpStatusCode.OK)
                     {
+                        Connected = true;
                         log.Debug("Got an OK from Jira when fetching worklog");
                         DataContractJsonSerializer serializer = new DataContractJsonSerializer(typeof(JiraWorklog));
                         worklog = serializer.ReadObject(stream) as JiraWorklog;
@@ -93,6 +100,7 @@ namespace TJI
                     }
                     else
                     {
+                        Connected = false;
                         log.WarnFormat("Didn't get an OK from Jira when fetching worklog for {0}, got {1}.", issue, response.StatusCode);
                     }
                 }

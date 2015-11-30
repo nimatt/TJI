@@ -62,17 +62,39 @@ namespace TJI
             syncronizer = new Syncronizer();
             syncronizer.StatusChange += syncronizer_StatusChange;
 
-            togglApiToken.Text = syncronizer.Settings.TogglApiToken;
             jiraServerUrl.Text = syncronizer.Settings.JiraServerUrl;
             jiraUsername.Text = syncronizer.Settings.JiraUsername;
             jiraPassword.Text = syncronizer.Settings.JiraPassword;
+            togglApiToken.Text = syncronizer.Settings.TogglApiToken;
             syncSleepTime.Text = syncronizer.Settings.SyncIntervall.ToString();
+
+            jiraServerUrl.LostFocus += SettingsUpdated;
+            jiraUsername.LostFocus += SettingsUpdated;
+            jiraPassword.LostFocus += SettingsUpdated;
+            togglApiToken.LostFocus += SettingsUpdated;
+            syncSleepTime.LostFocus += SettingsUpdated;
 
             FormClosing += MainWindow_FormClosing;
 
             if (syncronizer.Settings.HasSettings)
             {
                 StartSyncronization();
+            }
+        }
+
+        private void SettingsUpdated(object sender, EventArgs e)
+        {
+            bool changeMade = false;
+
+            changeMade |= jiraServerUrl.Text != syncronizer.Settings.JiraServerUrl;
+            changeMade |= jiraUsername.Text != syncronizer.Settings.JiraUsername;
+            changeMade |= jiraPassword.Text != syncronizer.Settings.JiraPassword;
+            changeMade |= togglApiToken.Text != syncronizer.Settings.TogglApiToken;
+            changeMade |= syncSleepTime.Text != syncronizer.Settings.SyncIntervall.ToString();
+
+            if (changeMade)
+            {
+                SaveSettings();
             }
         }
 
@@ -119,7 +141,7 @@ namespace TJI
             Icon = newIcon;
         }
 
-        private void saveSettingsButton_Click(object sender, EventArgs e)
+        private void SaveSettings()
         {
             log.Debug("Saving settings");
 

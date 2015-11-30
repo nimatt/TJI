@@ -10,7 +10,7 @@
 			<ComponentGroupRef Id='ProductComponents' />
 		</Feature>
     
-    <Icon Id='TJI.ico' SourceFile='$(var.TJI.ProjectDir)\TJI.ico' />
+    <Icon Id='TJI.ico' SourceFile='$(var.TJI.ProjectDir)\Resources\StandardIcon.ico' />
     
     <WixVariable Id="WixUILicenseRtf" Value="$(var.SolutionDir)\gpl.rtf" />
 

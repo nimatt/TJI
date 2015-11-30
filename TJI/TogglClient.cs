@@ -47,7 +47,6 @@ namespace TJI
         public event Action LogoutSucceded;
         public event Action LogoutFailed;
 
-        public event Action<TogglEntry[], DateTime> FetchedEntries;
         public event Action<string> FetchingEntriesFailed;
         
         public bool EncounteredError
@@ -163,9 +162,9 @@ namespace TJI
             }
         }
 
-        public void GetEntries(DateTime from, DateTime to)
+        public IEnumerable<TogglEntry> GetEntries(DateTime from, DateTime to)
         {
-            TogglEntry[] entries = null;
+            IEnumerable<TogglEntry> entries = null;
             string errorMessage = string.Empty;
             string completeUrl = string.Format("{0}?start_date={1}&end_date={2}", ENTRIES_URL, GetFormattedTime(from), GetFormattedTime(to));
 
@@ -201,9 +200,9 @@ namespace TJI
                             log.Error("Serializing Toggl server response gave null");
                             errorMessage = "Invalid response from server";
                         }
-                        else if (entries.Length > 0)
+                        else if (entries.Any())
                         {
-                            log.InfoFormat("Got {0} entries from Toggl", entries.Length);
+                            log.InfoFormat("Got {0} entries from Toggl", entries.Count());
                         }
                         else
                         {
@@ -227,24 +226,25 @@ namespace TJI
             {
                 EncounteredError = false;
                 entries = RemoveTooShortEntries(entries);
-                FetchedEntries(entries, to);
             }
             else
             {
                 EncounteredError = true;
                 FetchingEntriesFailed(errorMessage);
             }
+
+            return entries;
         }
 
-        private static TogglEntry[] RemoveTooShortEntries(TogglEntry[] entries)
+        private static IEnumerable<TogglEntry> RemoveTooShortEntries(IEnumerable<TogglEntry> entries)
         {
-            entries = (from e in entries
-                       where e.Duration > 30
-                       select e).ToArray();
+            entries = from e in entries
+                      where e.Duration > 30
+                      select e;
 
-            if (entries.Length > 0)
+            if (entries.Any())
             {
-                log.InfoFormat("{0} entries exceed 30 seconds", entries.Length);
+                log.InfoFormat("{0} entries exceed 30 seconds", entries.Count());
             }
             else
             {
@@ -255,7 +255,7 @@ namespace TJI
 
         private string GetFormattedTime(DateTime time)
         {
-            return System.Uri.EscapeDataString(time.ToString(TIME_FORMAT));
+            return Uri.EscapeDataString(time.ToString(TIME_FORMAT));
         }
     }
 }
