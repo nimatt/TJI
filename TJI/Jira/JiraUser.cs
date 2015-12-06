@@ -15,27 +15,23 @@
  * along with TJI.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.Serialization;
-using System.Text;
 
-namespace TJI
+namespace TJI.Jira
 {
     [DataContract]
-    class JiraWorklog
+    public class JiraUser
     {
-        [DataMember(Name = "startAt")]
-        public int StartAt { get; set; }
+        [DataMember(Name = "self")]
+        public string Self { get; set; }
 
-        [DataMember(Name = "maxResults")]
-        public int MaxResults { get; set; }
+        [DataMember(Name = "name")]
+        public string Name { get; set; }
 
-        [DataMember(Name = "total")]
-        public int Total { get; set; }
+        [DataMember(Name = "displayName")]
+        public string DisplayName { get; set; }
 
-        [DataMember(Name = "worklogs")]
-        public JiraWorkEntry[] Entries { get; set; }
+        [DataMember(Name = "active")]
+        public bool Active { get; set; }
     }
 }

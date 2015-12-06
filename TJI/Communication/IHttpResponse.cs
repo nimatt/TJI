@@ -14,20 +14,17 @@
  * You should have received a copy of the GNU General Public License
  * along with TJI.  If not, see <http://www.gnu.org/licenses/>.
  */
+ 
+ using System;
+using System.Collections.Generic;
+using System.Net;
 
-using System;
-using System.Windows.Forms;
-
-namespace TJI
+namespace TJI.Communication
 {
-    class Program
+    public interface IHttpResponse : IDisposable
     {
-        [STAThread]
-        static void Main(string[] args)
-        {
-            Application.EnableVisualStyles();
-            Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new MainWindow());
-        }
+        IDictionary<string, string> Headers { get; }
+        HttpStatusCode StatusCode { get; }
+        T GetResponseData<T>() where T : class;
     }
 }

@@ -17,13 +17,7 @@
 
 using log4net;
 using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
 using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 [assembly: log4net.Config.XmlConfigurator(ConfigFile = "TJI.exe.config", Watch = true)]  
@@ -31,25 +25,28 @@ namespace TJI
 {
     public partial class MainWindow : Form
     {
-        private static readonly ILog log = LogManager.GetLogger(typeof(MainWindow));
+        private static readonly Log Logger = Log.GetLogger(typeof(MainWindow));
         private delegate void UpdateStatus(string message, SyncronizerStatus status);
 
-        Syncronizer syncronizer;
+        Syncronizer _syncronizer;
+        private static readonly Font HeaderFont = new Font(FontFamily.GenericSansSerif, 12);
+        private static readonly Font StandardFont = new Font(FontFamily.GenericSansSerif, 10);
 
         public MainWindow()
         {
-            log.Debug("Initializing window");
+            Logger.Debug("Initializing window");
             InitializeComponent();
-            log.Debug("Main window initialized");
+            SetStartupText();
+            Logger.Debug("Main window initialized");
         }
 
-        private void notifyIcon1_MouseDoubleClick(object sender, MouseEventArgs e)
+        private void notifyIcon_MouseDoubleClick(object sender, MouseEventArgs e)
         {
             Show();
             WindowState = FormWindowState.Normal;
         }
 
-        private void MainWindow_Resize(object sender, System.EventArgs e)
+        private void MainWindow_Resize(object sender, EventArgs e)
         {
             if (WindowState == FormWindowState.Minimized)
             {
@@ -59,48 +56,31 @@ namespace TJI
 
         private void MainWindow_Load(object sender, EventArgs e)
         {
-            syncronizer = new Syncronizer();
-            syncronizer.StatusChange += syncronizer_StatusChange;
-
-            jiraServerUrl.Text = syncronizer.Settings.JiraServerUrl;
-            jiraUsername.Text = syncronizer.Settings.JiraUsername;
-            jiraPassword.Text = syncronizer.Settings.JiraPassword;
-            togglApiToken.Text = syncronizer.Settings.TogglApiToken;
-            syncSleepTime.Text = syncronizer.Settings.SyncIntervall.ToString();
-
-            jiraServerUrl.LostFocus += SettingsUpdated;
-            jiraUsername.LostFocus += SettingsUpdated;
-            jiraPassword.LostFocus += SettingsUpdated;
-            togglApiToken.LostFocus += SettingsUpdated;
-            syncSleepTime.LostFocus += SettingsUpdated;
+            _syncronizer = new Syncronizer();
+            _syncronizer.StatusChange += syncronizer_StatusChange;
+            startStopButton.Enabled = _syncronizer.Settings.HasSettings;
 
             FormClosing += MainWindow_FormClosing;
+            Log.Logging += LogEvent;
 
-            if (syncronizer.Settings.HasSettings)
+            if (_syncronizer.Settings.HasSettings)
             {
                 StartSyncronization();
             }
+            else
+            {
+                ShowNoSettingsInfo();
+            }
         }
 
-        private void SettingsUpdated(object sender, EventArgs e)
+        private void LogEvent(string message)
         {
-            bool changeMade = false;
-
-            changeMade |= jiraServerUrl.Text != syncronizer.Settings.JiraServerUrl;
-            changeMade |= jiraUsername.Text != syncronizer.Settings.JiraUsername;
-            changeMade |= jiraPassword.Text != syncronizer.Settings.JiraPassword;
-            changeMade |= togglApiToken.Text != syncronizer.Settings.TogglApiToken;
-            changeMade |= syncSleepTime.Text != syncronizer.Settings.SyncIntervall.ToString();
-
-            if (changeMade)
-            {
-                SaveSettings();
-            }
+            AppendLine(DateTime.Now.ToShortTimeString() + ": " + message);
         }
 
         void MainWindow_FormClosing(object sender, FormClosingEventArgs e)
         {
-            syncronizer.Stop();
+            _syncronizer.Stop();
             TrayIcon.Visible = false;
             TrayIcon.Dispose();
         }
@@ -118,19 +98,19 @@ namespace TJI
             switch (status)
             {
                 case SyncronizerStatus.Stopped:
-                    SetIcon(TJI.Properties.Resources.StandardIcon);
+                    SetIcon(Properties.Resources.StandardIcon);
                     break;
                 case SyncronizerStatus.Processing:
-                    SetIcon(TJI.Properties.Resources.RunningIcon);
+                    SetIcon(Properties.Resources.RunningIcon);
                     break;
                 case SyncronizerStatus.Sleeping:
-                    SetIcon(TJI.Properties.Resources.RunningIcon);
+                    SetIcon(Properties.Resources.RunningIcon);
                     break;
                 case SyncronizerStatus.Error:
-                    SetIcon(TJI.Properties.Resources.ErrorIcon);
+                    SetIcon(Properties.Resources.ErrorIcon);
                     break;
                 default:
-                    SetIcon(TJI.Properties.Resources.ErrorIcon);
+                    SetIcon(Properties.Resources.ErrorIcon);
                     break;
             }
         }
@@ -141,25 +121,9 @@ namespace TJI
             Icon = newIcon;
         }
 
-        private void SaveSettings()
-        {
-            log.Debug("Saving settings");
-
-            syncronizer.Settings.TogglApiToken = togglApiToken.Text;
-            syncronizer.Settings.JiraServerUrl = jiraServerUrl.Text;
-            syncronizer.Settings.JiraUsername = jiraUsername.Text;
-            syncronizer.Settings.JiraPassword = jiraPassword.Text;
-            syncronizer.Settings.SyncIntervall = int.Parse(syncSleepTime.Text);
-
-            syncronizer.Settings.Save();
-            syncronizer.Stop();
-            syncronizer.Start();
-            log.Debug("Settings saved");
-        }
-
         private void startStopButton_Click(object sender, EventArgs e)
         {
-            if (syncronizer.IsRunning)
+            if (_syncronizer.IsRunning)
             {
                 StopSyncronization();
             }
@@ -171,21 +135,74 @@ namespace TJI
 
         private void StopSyncronization()
         {
-            log.Info("Stopping syncronization");
+            Logger.Info("Stopping syncronization");
             startStopButton.Text = "Start";
-            syncronizer.Stop();
+            settingsButton.Enabled = true;
+            _syncronizer.Stop();
         }
 
         private void StartSyncronization()
         {
-            log.Info("Starting syncronization");
+            Logger.Info("Starting syncronization");
             startStopButton.Text = "Stop";
-            syncronizer.Start();
+            settingsButton.Enabled = false;
+            _syncronizer.Start();
         }
 
-        private void minimize_Click(object sender, EventArgs e)
+        private void hide_Click(object sender, EventArgs e)
         {
             Hide();
+        }
+
+        private void settings_Click(object sender, EventArgs e)
+        {
+            var window = new SettingsWindow(_syncronizer.Settings);
+            window.Closed += (o, args) => startStopButton.Enabled = _syncronizer.Settings.HasSettings;
+            window.Show();
+        }
+
+        private void AppendLine(string text)
+        {
+            AppendLine(text, StandardFont);
+        }
+
+        private void AppendLine(string text, Font font)
+        {
+            if (InvokeRequired)
+            {
+                try
+                {
+                    Invoke(new Action<string, Font>(AppendLine), new object[] {text, font});
+                }
+                catch (ObjectDisposedException)
+                {
+                    // This might happen on shutdown  
+                }
+                return;
+            }
+
+            output.Select(output.TextLength, 0);
+            output.SelectionFont = font;
+            output.SelectedText = text + Environment.NewLine;
+            output.ScrollToCaret();
+        }
+
+        private void SetStartupText()
+        {
+            string startupText = "Welcome to TJI"+ Environment.NewLine;
+            output.Text = startupText;
+            output.Select(0, startupText.Length);
+            output.SelectionFont = HeaderFont;
+            output.Select(startupText.Length - 3 - Environment.NewLine.Length, 3);
+            output.SelectionFont = new Font(HeaderFont, FontStyle.Bold);
+            output.Select(startupText.Length, 0);
+            output.SelectionFont = StandardFont;
+        }
+
+        private void ShowNoSettingsInfo()
+        {
+            AppendLine("You do not seem to have valid settings at the moment.");
+            AppendLine("Please click 'Settings' below.");
         }
     }
 }

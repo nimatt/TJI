@@ -15,27 +15,26 @@
  * along with TJI.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.Serialization;
-using System.Text;
+using System.Net;
+using TJI.Communication;
 
-namespace TJI
+namespace TJI_Test
 {
-    [DataContract]
-    public class JiraUser
+    internal class MockHttpResponse<TR> : IHttpResponse
     {
-        [DataMember(Name = "self")]
-        public string Self { get; set; }
+        internal IDictionary<string, string> FakeHeaders { get; set; } = new Dictionary<string, string>();
+        public IDictionary<string, string> Headers => FakeHeaders;
 
-        [DataMember(Name = "name")]
-        public string Name { get; set; }
+        internal HttpStatusCode FakeStatusCode { get; set; }
+        public HttpStatusCode StatusCode => FakeStatusCode;
 
-        [DataMember(Name = "displayName")]
-        public string DisplayName { get; set; }
+        public TR FakeResponseObject { get; set; }
+        public T GetResponseData<T>() where T : class => FakeResponseObject as T;
 
-        [DataMember(Name = "active")]
-        public bool Active { get; set; }
+        public void Dispose()
+        {
+            
+        }
     }
 }

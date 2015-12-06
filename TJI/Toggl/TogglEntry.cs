@@ -15,17 +15,12 @@
  * along with TJI.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Runtime.Serialization;
 
-namespace TJI
+namespace TJI.Toggl
 {
     [DataContract]
-    class TogglEntry
+    public class TogglEntry
     {
         [DataMember(Name = "id")]
         public int ID { get; set; }

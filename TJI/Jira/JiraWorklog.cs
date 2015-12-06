@@ -15,19 +15,23 @@
  * along with TJI.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-using System;
-using System.Windows.Forms;
+using System.Runtime.Serialization;
 
-namespace TJI
+namespace TJI.Jira
 {
-    class Program
+    [DataContract]
+    class JiraWorklog
     {
-        [STAThread]
-        static void Main(string[] args)
-        {
-            Application.EnableVisualStyles();
-            Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new MainWindow());
-        }
+        [DataMember(Name = "startAt")]
+        public int StartAt { get; set; }
+
+        [DataMember(Name = "maxResults")]
+        public int MaxResults { get; set; }
+
+        [DataMember(Name = "total")]
+        public int Total { get; set; }
+
+        [DataMember(Name = "worklogs")]
+        public JiraWorkEntry[] Entries { get; set; }
     }
 }

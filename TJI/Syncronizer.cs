@@ -19,17 +19,17 @@ using log4net;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
+using TJI.Jira;
+using TJI.Toggl;
 
 namespace TJI
 {
     public class Syncronizer
     {
-        private static readonly ILog log = LogManager.GetLogger(typeof(Syncronizer));
+        private static readonly Log Logger = Log.GetLogger(typeof(Syncronizer));
 
-        public TJISettings Settings { get; private set; }
+        public TJISettings Settings { get; }
 
         private bool _running = false;
         private Thread _syncThread;
@@ -43,9 +43,9 @@ namespace TJI
                 if (_togglClient == null && Settings.HasSettings)
                 {
                     _togglClient = new TogglClient(Settings.TogglApiToken);
-                    _togglClient.LogonSucceded += Toggl_LogonSucceded;
+                    _togglClient.LogonSucceeded += TogglLogonSucceeded;
                     _togglClient.LogonFailed += Toggl_LogonFailed;
-                    _togglClient.LogoutSucceded += Toggl_LogoutSucceded;
+                    _togglClient.LogoutSucceeded += TogglLogoutSucceeded;
                     _togglClient.LogoutFailed += Toggl_LogoutFailed;
                     _togglClient.FetchingEntriesFailed += Toggl_FetchingEntriesFailed;
                 }
@@ -164,7 +164,7 @@ namespace TJI
                     }
                     catch (Exception e)
                     {
-                        log.Error("Exception while syncronizing", e);
+                        Logger.Error("Exception while syncronizing", e);
                     }
                 }
             });
@@ -179,7 +179,14 @@ namespace TJI
             if (_syncThread != null && _syncThread.IsAlive)
             {
                 _syncThread.Interrupt();
-                _syncThread.Join();
+                try
+                {
+                    _syncThread.Join(1000);
+                }
+                catch (Exception e)
+                {
+                    Logger.Warn("Unable to join with syncronizer thread.", e);
+                }
             }
         }
 
@@ -201,7 +208,7 @@ namespace TJI
 
         private void SyncTogglEntries(IEnumerable<TogglEntry> togglEntries, DateTime startSyncTime)
         {
-            bool succeded = true;
+            bool succeeded = true;
             bool changedIssue = false;
             List<WorkEntry> workEntries = TranslateEntries(togglEntries);
 
@@ -223,18 +230,18 @@ namespace TJI
                 else
                 {
                     StatusChangeInternal("Failed to get Jira issue worklog");
-                    log.ErrorFormat("Unable to get worklog for {0}", entriesForIssue.Key);
-                    succeded = false;
+                    Logger.ErrorFormat("Unable to get worklog for {0}", entriesForIssue.Key);
+                    succeeded = false;
                 }
             }
 
-            if (succeded)
+            if (succeeded)
             {
                 if (changedIssue)
                 {
                     StatusChangeInternal("Syncronized successfully");
                 }
-                log.Debug("Successfully syncronized systems");
+                Logger.Debug("Successfully syncronized systems");
                 _lastSyncTime = startSyncTime;
             }
         }
@@ -247,12 +254,12 @@ namespace TJI
                 WorkEntry wEntry = WorkEntry.Create(tEntry);
                 if (wEntry != null)
                 {
-                    log.DebugFormat("Found work entry in Toggl for {0}", wEntry.IssueID);
+                    Logger.DebugFormat("Found work entry in Toggl for {0}", wEntry.IssueID);
                     workEntries.Add(wEntry);
                 }
                 else
                 {
-                    log.DebugFormat("Toggl entry is not in valid format{0}{1}", Environment.NewLine, tEntry.Description ?? "<null>");
+                    Logger.DebugFormat("Toggl entry is not in valid format{0}{1}", Environment.NewLine, tEntry.Description ?? "<null>");
                 }
             }
             return workEntries;
@@ -277,53 +284,53 @@ namespace TJI
         private void Toggl_FetchingEntriesFailed(string errorMsg)
         {
             StatusChangeInternal("Failed to get Toggl entries: " + errorMsg);
-            log.Error("Failed to get Toggl entries");
+            Logger.Error("Failed to get Toggl entries");
         }
 
-        private void Toggl_LogonSucceded()
+        private void TogglLogonSucceeded()
         {
             StatusChange("Logged in to Toggl", Status);
-            log.Info("Logged in to Toggl");
+            Logger.Info("Logged in to Toggl");
         }
 
         private void Toggl_LogonFailed()
         {
-            StatusChange("Failed to log in to Toggl", Status);
-            log.Warn("Failed to log in to Toggl");
+            StatusChange("Failed to Logger in to Toggl", Status);
+            Logger.Warn("Failed to Logger in to Toggl");
         }
 
-        private void Toggl_LogoutSucceded()
+        private void TogglLogoutSucceeded()
         {
-            log.Info("Logged out from Toggl");
+            Logger.Info("Logged out from Toggl");
         }
 
         private void Toggl_LogoutFailed()
         {
-            StatusChange("Failed to log out from Toggl", Status);
-            log.Warn("Failed to log out from Toggl");
+            StatusChange("Failed to Logger out from Toggl", Status);
+            Logger.Warn("Failed to Logger out from Toggl");
         }
 
         private void Jira_WorkEntryUpdated(WorkEntry wEntry)
         {
-            log.InfoFormat("Syncronized entry for {0}", wEntry.IssueID);
+            Logger.InfoFormat("Syncronized entry for {0}", wEntry.IssueID);
             StatusChangeInternal("Updated entry for " + wEntry.IssueID);
         }
 
         private void Jira_WorkEntryUpdateFailed(WorkEntry wEntry)
         {
-            log.ErrorFormat("Failed to syncronize entry for {0}", wEntry.IssueID);
+            Logger.ErrorFormat("Failed to syncronize entry for {0}", wEntry.IssueID);
             StatusChangeInternal("Failed to update entry for " + wEntry.IssueID);
         }
 
         private void Jira_WorkEntryCreated(WorkEntry wEntry)
         {
-            log.InfoFormat("Added entry for {0}", wEntry.IssueID);
+            Logger.InfoFormat("Added entry for {0}", wEntry.IssueID);
             StatusChangeInternal("Added entry for " + wEntry.IssueID);
         }
 
         private void Jira_WorkEntryCreationFailed(WorkEntry wEntry)
         {
-            log.ErrorFormat("Failed to add entry for {0}", wEntry.IssueID);
+            Logger.ErrorFormat("Failed to add entry for {0}", wEntry.IssueID);
             StatusChangeInternal("Failed to add entry for " + wEntry.IssueID);
         }
     }
