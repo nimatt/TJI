@@ -17,7 +17,8 @@
 
 using System;
 using System.Collections.Generic;
-using System.Configuration;
+using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.Linq;
 using System.Net;
 using NUnit.Framework;
@@ -43,8 +44,7 @@ namespace TJI_Test.Toggl
         [Test]
         public void Login_EmptySetCookieHeaderLoginFail()
         {
-            Dictionary<string, string> headers = new Dictionary<string, string>();
-            headers.Add("Set-Cookie", string.Empty);
+            Dictionary<string, string> headers = new Dictionary<string, string> {{"Set-Cookie", string.Empty}};
             ToggleClientStatusKeeper statusKeeper = LoginWithHeaders(headers);
 
             Assert.IsTrue(statusKeeper.LogonFailed);
@@ -53,8 +53,10 @@ namespace TJI_Test.Toggl
         [Test]
         public void Login_InvalidSetCookieHeaderLoginFail()
         {
-            Dictionary<string, string> headers = new Dictionary<string, string>();
-            headers.Add(TogglClient.CookieName, "This Is not a valid header");
+            Dictionary<string, string> headers = new Dictionary<string, string>
+            {
+                {TogglClient.CookieName, "This Is not a valid header"}
+            };
             ToggleClientStatusKeeper statusKeeper = LoginWithHeaders(headers);
 
             Assert.IsTrue(statusKeeper.LogonFailed);
@@ -63,8 +65,10 @@ namespace TJI_Test.Toggl
         [Test]
         public void Login_EmptyAuthCookieLoginFail()
         {
-            Dictionary<string, string> headers = new Dictionary<string, string>();
-            headers.Add("Set-Cookie", TogglClient.CookieName + "=;Path=/;");
+            Dictionary<string, string> headers = new Dictionary<string, string>
+            {
+                {"Set-Cookie", TogglClient.CookieName + "=;Path=/;"}
+            };
             ToggleClientStatusKeeper statusKeeper = LoginWithHeaders(headers);
 
             Assert.IsTrue(statusKeeper.LogonFailed);
@@ -73,8 +77,10 @@ namespace TJI_Test.Toggl
         [Test]
         public void Login_ValidCookieHeaderLoginSuccess()
         {
-            Dictionary<string, string> headers = new Dictionary<string, string>();
-            headers.Add("Set-Cookie", TogglClient.CookieName + "=secret_value;Path=/;");
+            Dictionary<string, string> headers = new Dictionary<string, string>
+            {
+                {"Set-Cookie", TogglClient.CookieName + "=secret_value;Path=/;"}
+            };
             ToggleClientStatusKeeper statusKeeper = LoginWithHeaders(headers);
 
             Assert.IsFalse(statusKeeper.LogonFailed);
@@ -83,6 +89,7 @@ namespace TJI_Test.Toggl
         }
 
         [Test]
+        [SuppressMessage("ReSharper", "ObjectCreationAsStatement")]
         public void TogglClient_CreationWithEmptyAuthThrows()
         {
             Assert.Throws(typeof (ArgumentException), () => new TogglClient(string.Empty));
@@ -172,13 +179,112 @@ namespace TJI_Test.Toggl
             Assert.AreEqual(1, returnedEntries.Count());
         }
 
+        [Test]
+        public void GetEntries_NoEntriesReturnsEmptyCollection()
+        {
+            DateTime from = new DateTime(2015, 12, 4);
+            DateTime to = new DateTime(2015, 12, 6);
+            TogglEntry[] entries = {};
+            IEnumerable<TogglEntry> returnedEntries = GetEntries(entries, from, to);
+
+            Assert.AreEqual(0, returnedEntries.Count());
+        }
+
+        [Test]
+        public void GetEntries_NullReturnsNull()
+        {
+            DateTime from = new DateTime(2015, 12, 4);
+            DateTime to = new DateTime(2015, 12, 6);
+            IEnumerable<TogglEntry> returnedEntries = GetEntries(null, from, to);
+
+            Assert.IsNull(returnedEntries);
+        }
+
+        [Test]
+        public void GetEntries_NullInvokesFail()
+        {
+            DateTime from = new DateTime(2015, 12, 4);
+            DateTime to = new DateTime(2015, 12, 6);
+            TogglClient client;
+            ToggleClientStatusKeeper statusKeeper;
+            var source = GetLoggedInClient(out client, out statusKeeper);
+
+            source.SetResponse(client.GetFormattedEntriesUrl(from, to), "GET", new MockHttpResponse<TogglEntry[]>()
+            {
+                FakeStatusCode = HttpStatusCode.OK,
+                FakeResponseObject = null
+            });
+
+            client.GetEntries(from, to);
+
+            Assert.IsTrue(statusKeeper.GetEntriesFailed);
+        }
+
+        [Test]
+        public void GetEntries_HttpErrorStatusCausesFail()
+        {
+            DateTime from = new DateTime(2015, 12, 4);
+            DateTime to = new DateTime(2015, 12, 6);
+            TogglClient client;
+            ToggleClientStatusKeeper statusKeeper;
+            var source = GetLoggedInClient(out client, out statusKeeper);
+
+            source.SetResponse(client.GetFormattedEntriesUrl(from, to), "GET", new MockHttpResponse<TogglEntry[]>()
+            {
+                FakeStatusCode = HttpStatusCode.BadRequest,
+                FakeResponseObject = new[]
+                {
+                    CreateTogglEntry(from.AddDays(1), 60)
+                }
+            });
+
+            client.GetEntries(from, to);
+
+            Assert.IsTrue(statusKeeper.GetEntriesFailed);
+        }
+
+        [Test]
+        public void GetEntries_TimeoutCausesFail()
+        {
+            DateTime from = new DateTime(2015, 12, 4);
+            DateTime to = new DateTime(2015, 12, 6);
+            TogglClient client;
+            ToggleClientStatusKeeper statusKeeper;
+            var source = GetLoggedInClient(out client, out statusKeeper);
+
+            source.SetException(client.GetFormattedEntriesUrl(from, to), "GET", new WebException("Web exception", WebExceptionStatus.Timeout));
+
+            var entries = client.GetEntries(from, to);
+
+            Assert.IsNull(entries);
+            Assert.IsTrue(statusKeeper.GetEntriesFailed);
+        }
+
+        private static MockHttpDataSource GetLoggedInClient(out TogglClient client, out ToggleClientStatusKeeper statusKeeper)
+        {
+            Dictionary<string, string> headers = new Dictionary<string, string> {{"Set-Cookie", ValidFakeCookie}};
+            MockHttpDataSource source = new MockHttpDataSource();
+            client = new TogglClient(FakeToken, source);
+            statusKeeper = new ToggleClientStatusKeeper(client);
+
+            source.SetResponse(TogglClient.SessionUrl, "POST", new MockHttpResponse<TogglEntry[]>()
+            {
+                FakeHeaders = headers
+            });
+
+            client.LogIn();
+
+            Assert.IsTrue(statusKeeper.IsLoggedIn);
+            return source;
+        }
+
         private static TogglEntry CreateTogglEntry(DateTime time, int duration, string desc = "test")
         {
             return new TogglEntry()
             {
-                At = time.ToString(),
-                Start = time.ToString(),
-                Stop = time.AddSeconds(duration).ToString(),
+                At = time.ToString(CultureInfo.CurrentCulture),
+                Start = time.ToString(CultureInfo.CurrentCulture),
+                Stop = time.AddSeconds(duration).ToString(CultureInfo.CurrentCulture),
                 Duration = duration,
                 Description = desc
             };
@@ -252,6 +358,7 @@ namespace TJI_Test.Toggl
             public bool LogonSucceeded { get; private set; }
             public bool LogoutFailed { get; private set; }
             public bool LogoutSucceeded { get; private set; }
+            public bool GetEntriesFailed { get; private set; }
 
             public bool IsLoggedIn => _togglClient.IsLoggedIn;
 
@@ -265,6 +372,7 @@ namespace TJI_Test.Toggl
                 client.LogonSucceeded += delegate { LogonSucceeded = true; };
                 client.LogoutFailed += delegate { LogoutFailed = true; };
                 client.LogoutSucceeded += delegate { LogoutSucceeded = true; };
+                client.FetchingEntriesFailed += delegate { GetEntriesFailed = true; };
             }
         }
     }

@@ -25,14 +25,14 @@ namespace TJI.Jira
 {
     class JiraClient
     {
-        private static string GET_WORKLOG_URL = "/rest/api/2/issue/{0}/worklog";
-        private const string TIME_FORMAT = "yyyy-MM-ddTHH:mm:ss.fff";
+        private static readonly string GetWorklogUrl = "/rest/api/2/issue/{0}/worklog";
+        private const string TimeFormat = "yyyy-MM-ddTHH:mm:ss.fff";
 
         private static readonly Log Logger = Log.GetLogger(typeof(JiraClient));
 
-        private string _username;
-        private string _password;
-        private string _serverUrl;
+        private readonly string _username;
+        private readonly string _password;
+        private readonly string _serverUrl;
 
         public bool EncounteredError
         {
@@ -74,7 +74,7 @@ namespace TJI.Jira
             JiraWorklog worklog = null;
 
             Logger.DebugFormat("Getting worklog for {0}", issue);
-            HttpWebRequest request = GetRequest(string.Format(GET_WORKLOG_URL, issue), true);
+            HttpWebRequest request = GetRequest(string.Format(GetWorklogUrl, issue), true);
             request.Method = "GET";
 
             try
@@ -125,7 +125,7 @@ namespace TJI.Jira
             jEntry.TimeSpent = wEntry.TimeSpent;
             
             Logger.DebugFormat("Creating a entry for {0} corresponding to {1}.", wEntry.IssueID, wEntry.TogglID);
-            HttpWebRequest request = GetRequest(string.Format(GET_WORKLOG_URL, wEntry.IssueID), true);
+            HttpWebRequest request = GetRequest(string.Format(GetWorklogUrl, wEntry.IssueID), true);
             request.ContentType = "application/json;charset=UTF-8";
             request.Method = "POST";
 
@@ -139,19 +139,19 @@ namespace TJI.Jira
                     {
                         Logger.DebugFormat("Work entry created for issue {0}", wEntry.IssueID);
                         EncounteredError = false;
-                        WorkEntryCreated(wEntry);
+                        WorkEntryCreated?.Invoke(wEntry);
                         return true;
                     }
                     else
                     {
-                        WorkEntryCreationFailed(wEntry);
+                        WorkEntryCreationFailed?.Invoke(wEntry);
                         Logger.WarnFormat("Didn't get the expected status code back when creating a work entry for {0}. Got {1}", wEntry.IssueID, response.StatusCode);
                     }
                 }
             }
             catch (WebException we)
             {
-                WorkEntryCreationFailed(wEntry);
+                WorkEntryCreationFailed?.Invoke(wEntry);
                 Logger.Error("Unable add work entry", we);
             }
 
@@ -166,7 +166,7 @@ namespace TJI.Jira
         /// <returns>Start time of the entry in a correctly formatted string</returns>
         private static string GetStartTime(WorkEntry wEntry)
         {
-            return wEntry.Start.ToString(TIME_FORMAT) + wEntry.Start.ToString("zzz").Replace(":", "");
+            return wEntry.Start.ToString(TimeFormat) + wEntry.Start.ToString("zzz").Replace(":", "");
         }
 
         /// <summary>
@@ -194,14 +194,13 @@ namespace TJI.Jira
                     if (response.StatusCode == HttpStatusCode.OK)
                     {
                         EncounteredError = false;
-                        WorkEntryUpdated(wEntry);
-                        Logger.InfoFormat("Syncronized entry {0} in {1}", wEntry.TogglID, wEntry.IssueID);
+                        WorkEntryUpdated?.Invoke(wEntry);
                         return true;
                     }
                     else
                     {
                         EncounteredError = true;
-                        WorkEntryUpdateFailed(wEntry);
+                        WorkEntryUpdateFailed?.Invoke(wEntry);
                         Logger.WarnFormat("Didn't get the expected status code back when syncing a work entry for {0}. Got {1}", wEntry.IssueID, response.StatusCode);
                     }
                 }
@@ -209,7 +208,7 @@ namespace TJI.Jira
             catch (WebException we)
             {
                 EncounteredError = true;
-                WorkEntryUpdateFailed(wEntry);
+                WorkEntryUpdateFailed?.Invoke(wEntry);
                 Logger.Error("Unable to sync web entry", we);
             }
 

@@ -165,7 +165,7 @@ namespace TJI.Toggl
 
         public IEnumerable<TogglEntry> GetEntries(DateTime from, DateTime to)
         {
-            IEnumerable<TogglEntry> entries = new TogglEntry[0];
+            IEnumerable<TogglEntry> entries = null;
             string errorMessage = string.Empty;
             string completeUrl = GetFormattedEntriesUrl(from, to);
 
