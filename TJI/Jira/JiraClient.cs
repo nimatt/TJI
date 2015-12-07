@@ -195,7 +195,7 @@ namespace TJI.Jira
                     {
                         EncounteredError = false;
                         WorkEntryUpdated(wEntry);
-                        Logger.DebugFormat("Syncronized entry {0} in {1}", wEntry.TogglID, wEntry.IssueID);
+                        Logger.InfoFormat("Syncronized entry {0} in {1}", wEntry.TogglID, wEntry.IssueID);
                         return true;
                     }
                     else

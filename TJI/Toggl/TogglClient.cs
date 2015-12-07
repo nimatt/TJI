@@ -202,7 +202,7 @@ namespace TJI.Toggl
                         }
                         else if (entries.Any())
                         {
-                            Logger.InfoFormat("Got {0} entries from Toggl", entries.Count());
+                            Logger.DebugFormat("Got {0} entries from Toggl", entries.Count());
                         }
                         else
                         {
@@ -250,7 +250,7 @@ namespace TJI.Toggl
             entries = entries as IList<TogglEntry> ?? entries.ToList();
             if (entries.Any())
             {
-                Logger.InfoFormat("{0} entries exceed 30 seconds", entries.Count());
+                Logger.DebugFormat("{0} entries exceed 30 seconds", entries.Count());
             }
             else
             {

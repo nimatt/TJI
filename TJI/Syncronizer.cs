@@ -224,6 +224,7 @@ namespace TJI
                 JiraWorklog worklog = jiraClient.GetIssueWorklog(entriesForIssue.Key);
                 if (worklog != null)
                 {
+                    Logger.DebugFormat("Syncronizing worklog for {0}", entriesForIssue.Key);
                     SyncronizeWorklog(worklog, entriesForIssue);
                     changedIssue = true;
                 }
@@ -277,6 +278,10 @@ namespace TJI
                 else if (jEntry.TimeSpentSeconds != (wEntry.DurationInMinutes * 60))
                 {
                     Jira.SyncWorkEntry(jEntry, wEntry);
+                }
+                else
+                {
+                    Logger.DebugFormat("Entry {0} in {1} already correct", wEntry.TogglID, wEntry.IssueID);
                 }
             }
         }

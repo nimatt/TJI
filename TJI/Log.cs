@@ -22,17 +22,20 @@ namespace TJI
 
         public void Debug(string message)
         {
-            if (_logger.IsDebugEnabled)
-            {
-                _logger.Debug(message);
-                Logging?.Invoke(message);
-            }
+            if (!_logger.IsDebugEnabled)
+                return;
+
+            _logger.Debug(message);
+            Logging?.Invoke(message);
         }
 
         public void Debug(string message, Exception exception)
         {
-            // TODO: Handle exception
-            Debug(message);
+            if (!_logger.IsDebugEnabled)
+                return;
+
+            _logger.Debug(message, exception);
+            Logging?.Invoke(message);
         }
 
         public void DebugFormat(string format, params object[] args)
@@ -42,17 +45,20 @@ namespace TJI
 
         public void Info(string message)
         {
-            if (_logger.IsInfoEnabled)
-            {
-                _logger.Info(message);
-                Logging?.Invoke(message);
-            }
+            if (!_logger.IsInfoEnabled)
+                return;
+
+            _logger.Info(message);
+            Logging?.Invoke(message);
         }
 
         public void Info(string message, Exception exception)
         {
-            // TODO: Handle exception
-            Info(message);
+            if (!_logger.IsInfoEnabled)
+                return;
+
+            _logger.Info(message, exception);
+            Logging?.Invoke(message);
         }
 
         public void InfoFormat(string format, params object[] args)
@@ -62,17 +68,20 @@ namespace TJI
 
         public void Warn(string message)
         {
-            if (_logger.IsWarnEnabled)
-            {
-                _logger.Warn(message);
-                Logging?.Invoke(message);
-            }
+            if (!_logger.IsWarnEnabled)
+                return;
+
+            _logger.Warn(message);
+            Logging?.Invoke(message);
         }
 
         public void Warn(string message, Exception exception)
         {
-            // TODO: Handle exception
-            Warn(message);
+            if (!_logger.IsWarnEnabled)
+                return;
+
+            _logger.Warn(message, exception);
+            Logging?.Invoke(message);
         }
 
         public void WarnFormat(string format, params object[] args)
@@ -82,17 +91,20 @@ namespace TJI
 
         public void Error(string message)
         {
-            if (_logger.IsErrorEnabled)
-            {
-                _logger.Error(message);
-                Logging?.Invoke(message);
-            }
+            if (!_logger.IsErrorEnabled)
+                return;
+
+            _logger.Error(message);
+            Logging?.Invoke(message);
         }
 
         public void Error(string message, Exception exception)
         {
-            // TODO: Handle exception
-            Error(message);
+            if (!_logger.IsErrorEnabled)
+                return;
+
+            _logger.Error(message, exception);
+            Logging?.Invoke(message);
         }
 
         public void ErrorFormat(string format, params object[] args)

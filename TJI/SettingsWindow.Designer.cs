@@ -199,6 +199,7 @@
             this.Controls.Add(this.jiraGroup);
             this.Controls.Add(this.okButton);
             this.Controls.Add(this.cancelButton);
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
             this.Icon = global::TJI.Properties.Resources.StandardIcon;
             this.MaximizeBox = false;
             this.Name = "SettingsWindow";

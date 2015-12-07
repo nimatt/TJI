@@ -93,6 +93,7 @@
             this.Controls.Add(this.settingsButton);
             this.Controls.Add(this.hideButton);
             this.Controls.Add(this.startStopButton);
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
             this.Icon = global::TJI.Properties.Resources.StandardIcon;
             this.MaximizeBox = false;
             this.Name = "MainWindow";
