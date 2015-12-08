@@ -19,7 +19,7 @@
 
 namespace TJI.Communication
 {
-    internal interface IHttpDataSource
+    public interface IHttpDataSource
     {
         IHttpResponse GetResponse(HttpWebRequest request);
     }

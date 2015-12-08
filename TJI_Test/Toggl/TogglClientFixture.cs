@@ -31,7 +31,9 @@ namespace TJI_Test.Toggl
     public class TogglClientFixture
     {
         private const string FakeToken = "fake token";
-        private const string ValidFakeCookie = TogglClient.CookieName + "=secret_value;Domain=toggl.com;Path=/;";
+        private const string CookieName = "toggl_api_session_new";
+        private const string SessionUrl = "https://www.toggl.com/api/v8/sessions";
+        private const string ValidFakeCookie = CookieName + "=secret_value;Domain=toggl.com;Path=/;";
 
         [Test]
         public void Login_NoAuthCookieCallsLoginFail()
@@ -55,7 +57,7 @@ namespace TJI_Test.Toggl
         {
             Dictionary<string, string> headers = new Dictionary<string, string>
             {
-                {TogglClient.CookieName, "This Is not a valid header"}
+                {CookieName, "This Is not a valid header"}
             };
             ToggleClientStatusKeeper statusKeeper = LoginWithHeaders(headers);
 
@@ -67,7 +69,7 @@ namespace TJI_Test.Toggl
         {
             Dictionary<string, string> headers = new Dictionary<string, string>
             {
-                {"Set-Cookie", TogglClient.CookieName + "=;Path=/;"}
+                {"Set-Cookie", CookieName + "=;Path=/;"}
             };
             ToggleClientStatusKeeper statusKeeper = LoginWithHeaders(headers);
 
@@ -79,7 +81,7 @@ namespace TJI_Test.Toggl
         {
             Dictionary<string, string> headers = new Dictionary<string, string>
             {
-                {"Set-Cookie", TogglClient.CookieName + "=secret_value;Path=/;"}
+                {"Set-Cookie", CookieName + "=secret_value;Path=/;"}
             };
             ToggleClientStatusKeeper statusKeeper = LoginWithHeaders(headers);
 
@@ -136,11 +138,11 @@ namespace TJI_Test.Toggl
             TogglClient client = new TogglClient(FakeToken, source);
             ToggleClientStatusKeeper statusKeeper = new ToggleClientStatusKeeper(client);
 
-            source.SetResponse(TogglClient.SessionUrl, "POST", new MockHttpResponse<TogglEntry[]>()
+            source.SetResponse(SessionUrl, "POST", new MockHttpResponse<TogglEntry[]>()
             {
                 FakeHeaders = headers
             });
-            source.SetException(TogglClient.SessionUrl, "DELETE", new WebException("Timeout", WebExceptionStatus.Timeout));
+            source.SetException(SessionUrl, "DELETE", new WebException("Timeout", WebExceptionStatus.Timeout));
 
             client.LogIn();
             client.LogOut();
@@ -267,7 +269,7 @@ namespace TJI_Test.Toggl
             client = new TogglClient(FakeToken, source);
             statusKeeper = new ToggleClientStatusKeeper(client);
 
-            source.SetResponse(TogglClient.SessionUrl, "POST", new MockHttpResponse<TogglEntry[]>()
+            source.SetResponse(SessionUrl, "POST", new MockHttpResponse<TogglEntry[]>()
             {
                 FakeHeaders = headers
             });
@@ -297,7 +299,7 @@ namespace TJI_Test.Toggl
             TogglClient client = new TogglClient(FakeToken, source);
             ToggleClientStatusKeeper statusKeeper = new ToggleClientStatusKeeper(client);
 
-            source.SetResponse(TogglClient.SessionUrl, "POST", new MockHttpResponse<TogglEntry[]>()
+            source.SetResponse(SessionUrl, "POST", new MockHttpResponse<TogglEntry[]>()
             {
                 FakeHeaders = headers
             });
@@ -322,11 +324,11 @@ namespace TJI_Test.Toggl
             TogglClient client = new TogglClient(FakeToken, source);
             ToggleClientStatusKeeper statusKeeper = new ToggleClientStatusKeeper(client);
 
-            source.SetResponse(TogglClient.SessionUrl, "POST", new MockHttpResponse<TogglEntry[]>()
+            source.SetResponse(SessionUrl, "POST", new MockHttpResponse<TogglEntry[]>()
             {
                 FakeHeaders = headers
             });
-            source.SetResponse(TogglClient.SessionUrl, "DELETE", new MockHttpResponse<TogglEntry[]>()
+            source.SetResponse(SessionUrl, "DELETE", new MockHttpResponse<TogglEntry[]>()
             {
                 FakeStatusCode = statusCode
             });
@@ -345,7 +347,7 @@ namespace TJI_Test.Toggl
             TogglClient client = new TogglClient(FakeToken, source);
             ToggleClientStatusKeeper statusKeeper = new ToggleClientStatusKeeper(client);
 
-            source.SetResponse(TogglClient.SessionUrl, "POST", response);
+            source.SetResponse(SessionUrl, "POST", response);
             client.LogIn();
             return statusKeeper;
         }

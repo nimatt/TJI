@@ -98,6 +98,7 @@
     <Compile Include="Communication\HttpResponse.cs" />
     <Compile Include="Communication\IHttpDataSource.cs" />
     <Compile Include="Communication\IHttpResponse.cs" />
+    <Compile Include="Communication\SessionClient.cs" />
     <Compile Include="Log.cs" />
     <Compile Include="SettingsWindow.cs">
       <SubType>Form</SubType>
