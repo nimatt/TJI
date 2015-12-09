@@ -42,6 +42,11 @@ namespace TJI_Test
             return null;
         }
 
+        public void WriteRequestData(HttpWebRequest request, string data)
+        {
+            
+        }
+
         public void SetResponse(string url, string method, IHttpResponse response)
         {
             string key = $"{url}##{method}";

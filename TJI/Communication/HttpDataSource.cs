@@ -14,8 +14,9 @@
  * You should have received a copy of the GNU General Public License
  * along with TJI.  If not, see <http://www.gnu.org/licenses/>.
  */
- 
- using System.Net;
+
+using System.IO;
+using System.Net;
 
 namespace TJI.Communication
 {
@@ -24,6 +25,14 @@ namespace TJI.Communication
         public IHttpResponse GetResponse(HttpWebRequest request)
         {
             return new HttpResponse((HttpWebResponse)request.GetResponse());
+        }
+
+        public void WriteRequestData(HttpWebRequest request, string data)
+        {
+            using (StreamWriter writer = new StreamWriter(request.GetRequestStream()))
+            {
+                writer.Write(data);
+            }
         }
     }
 }

@@ -15,7 +15,6 @@
  * along with TJI.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-using log4net;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -31,7 +30,7 @@ namespace TJI
 
         public TJISettings Settings { get; }
 
-        private bool _running = false;
+        private bool _running;
         private Thread _syncThread;
         private DateTime _lastSyncTime = DateTime.MinValue;
 
@@ -43,11 +42,7 @@ namespace TJI
                 if (_togglClient == null && Settings.HasSettings)
                 {
                     _togglClient = new TogglClient(Settings.TogglApiToken);
-                    _togglClient.LogonSucceeded += TogglLogonSucceeded;
-                    _togglClient.LogonFailed += Toggl_LogonFailed;
-                    _togglClient.LogoutSucceeded += TogglLogoutSucceeded;
-                    _togglClient.LogoutFailed += Toggl_LogoutFailed;
-                    _togglClient.FetchingEntriesFailed += Toggl_FetchingEntriesFailed;
+                    SetToggleClientStatusChangeCallbacks(_togglClient);
                 }
 
                 return _togglClient;
@@ -58,6 +53,15 @@ namespace TJI
             }
         }
 
+        private void SetToggleClientStatusChangeCallbacks(TogglClient client)
+        {
+            client.LogonSucceeded += () => { AlertStatusChange("Logged in to Toggl", Logger.Info); };
+            client.LogonFailed += () => { AlertStatusChange("Failed to log in to Toggl", Logger.Warn); };
+            client.LogoutSucceeded += () => { AlertStatusChange("Logged out from Toggl", Logger.Info); };
+            client.LogoutFailed += () => { AlertStatusChange("Failed to log in to Toggl", Logger.Warn); };
+            client.FetchingEntriesFailed += errorMsg => { AlertStatusChange($"Failed to get Toggl entries: {errorMsg}", Logger.Error); };
+        }
+
         private JiraClient _jiraClient;
         private JiraClient Jira
         {
@@ -66,10 +70,7 @@ namespace TJI
                 if (_jiraClient == null)
                 {
                     _jiraClient = new JiraClient(Settings.JiraUsername, Settings.JiraPassword, Settings.JiraServerUrl);
-                    _jiraClient.WorkEntryCreated += Jira_WorkEntryCreated;
-                    _jiraClient.WorkEntryCreationFailed += Jira_WorkEntryCreationFailed;
-                    _jiraClient.WorkEntryUpdated += Jira_WorkEntryUpdated;
-                    _jiraClient.WorkEntryUpdateFailed += Jira_WorkEntryUpdateFailed;
+                    SetJiraClientStatusChangeCallbacks(_jiraClient);
                 }
 
                 return _jiraClient;
@@ -80,13 +81,19 @@ namespace TJI
             }
         }
 
-        public bool IsRunning
+        private void SetJiraClientStatusChangeCallbacks(JiraClient client)
         {
-            get
-            {
-                return _running && _syncThread != null && _syncThread.IsAlive;
-            }
+            client.LogonSucceeded += () => { AlertStatusChange("Logged in to Jira", Logger.Info); };
+            client.LogonFailed += () => { AlertStatusChange("Failed to log in to Jira", Logger.Warn); };
+            client.LogoutSucceeded += () => { AlertStatusChange("Logged out from Jira", Logger.Info); };
+            client.LogoutFailed += () => { AlertStatusChange("Failed to log in to Jira", Logger.Warn); };
+            client.WorkEntryCreated += wEntry => { AlertStatusChange($"Added entry for {wEntry.IssueID}", Logger.Info); };
+            client.WorkEntryCreationFailed += wEntry => { AlertStatusChange($"Failed to add entry for {wEntry.IssueID}", Logger.Error); };
+            client.WorkEntryUpdated += wEntry => { AlertStatusChange($"Updated entry for {wEntry.IssueID}", Logger.Info); };
+            client.WorkEntryUpdateFailed += wEntry => { AlertStatusChange($"Failed to update entry for {wEntry.IssueID}", Logger.Error); };
         }
+
+        public bool IsRunning => _running && _syncThread != null && _syncThread.IsAlive;
 
         public SyncronizerStatus Status
         {
@@ -104,7 +111,7 @@ namespace TJI
                 }
                 else if (Toggl.IsLoggedIn)
                 {
-                    status = Jira.Connected ? SyncronizerStatus.Sleeping : SyncronizerStatus.Stopped;
+                    status = Jira.IsLoggedIn ? SyncronizerStatus.Sleeping : SyncronizerStatus.Stopped;
                 }
 
                 return status;
@@ -112,11 +119,6 @@ namespace TJI
         }
 
         public event Action<string, SyncronizerStatus> StatusChange;
-
-        private void StatusChangeInternal(string msg)
-        {
-            StatusChange(msg, Status);
-        }
 
         public Syncronizer()
         {
@@ -140,15 +142,15 @@ namespace TJI
                 {
                     try
                     {
-                        if (Toggl == null || !Toggl.IsLoggedIn)
+                        if (Toggl == null || !Toggl.IsLoggedIn || Jira == null || !Jira.IsLoggedIn)
                         {
                             LogIn();
                         }
 
-                        if (Toggl != null && Toggl.IsLoggedIn)
+                        if (Toggl != null && Toggl.IsLoggedIn && Jira != null && Jira.IsLoggedIn)
                         {
                             DateTime startSyncTime = DateTime.Now;
-                            IEnumerable<TogglEntry> entries = Toggl.GetEntries(startSyncTime.AddDays(-2), startSyncTime);
+                            var entries = Toggl.GetEntries(startSyncTime.AddDays(-2), startSyncTime);
 
                             if (entries != null && entries.Any())
                             {
@@ -188,14 +190,17 @@ namespace TJI
                     Logger.Warn("Unable to join with syncronizer thread.", e);
                 }
             }
+
+            LogOut();
         }
 
         private void LogIn()
         {
-            if (Settings.HasSettings)
-            {
-                Toggl.LogIn();
-            }
+            if (!Settings.HasSettings)
+                return;
+
+            Toggl.LogIn();
+            Jira.LogIn();
         }
 
         private void LogOut()
@@ -203,6 +208,10 @@ namespace TJI
             if (Toggl != null && Toggl.IsLoggedIn)
             {
                 Toggl.LogOut();
+            }
+            if (Jira != null && Jira.IsLoggedIn)
+            {
+                Jira.LogOut();
             }
         }
 
@@ -230,7 +239,7 @@ namespace TJI
                 }
                 else
                 {
-                    StatusChangeInternal("Failed to get Jira issue worklog");
+                    AlertStatusChange("Failed to get Jira issue worklog", Logger.Warn);
                     Logger.ErrorFormat("Unable to get worklog for {0}", entriesForIssue.Key);
                     succeeded = false;
                 }
@@ -240,7 +249,7 @@ namespace TJI
             {
                 if (changedIssue)
                 {
-                    StatusChangeInternal("Syncronized successfully");
+                    AlertStatusChange("Syncronized successfully", Logger.Info);
                 }
                 Logger.Debug("Successfully syncronized systems");
                 _lastSyncTime = startSyncTime;
@@ -286,57 +295,10 @@ namespace TJI
             }
         }
 
-        private void Toggl_FetchingEntriesFailed(string errorMsg)
+        private void AlertStatusChange(string message, Action<string> logAction)
         {
-            StatusChangeInternal("Failed to get Toggl entries: " + errorMsg);
-            Logger.Error("Failed to get Toggl entries");
-        }
-
-        private void TogglLogonSucceeded()
-        {
-            StatusChange("Logged in to Toggl", Status);
-            Logger.Info("Logged in to Toggl");
-        }
-
-        private void Toggl_LogonFailed()
-        {
-            StatusChange("Failed to Logger in to Toggl", Status);
-            Logger.Warn("Failed to Logger in to Toggl");
-        }
-
-        private void TogglLogoutSucceeded()
-        {
-            Logger.Info("Logged out from Toggl");
-        }
-
-        private void Toggl_LogoutFailed()
-        {
-            StatusChange("Failed to Logger out from Toggl", Status);
-            Logger.Warn("Failed to Logger out from Toggl");
-        }
-
-        private void Jira_WorkEntryUpdated(WorkEntry wEntry)
-        {
-            Logger.InfoFormat("Syncronized entry for {0}", wEntry.IssueID);
-            StatusChangeInternal("Updated entry for " + wEntry.IssueID);
-        }
-
-        private void Jira_WorkEntryUpdateFailed(WorkEntry wEntry)
-        {
-            Logger.ErrorFormat("Failed to syncronize entry for {0}", wEntry.IssueID);
-            StatusChangeInternal("Failed to update entry for " + wEntry.IssueID);
-        }
-
-        private void Jira_WorkEntryCreated(WorkEntry wEntry)
-        {
-            Logger.InfoFormat("Added entry for {0}", wEntry.IssueID);
-            StatusChangeInternal("Added entry for " + wEntry.IssueID);
-        }
-
-        private void Jira_WorkEntryCreationFailed(WorkEntry wEntry)
-        {
-            Logger.ErrorFormat("Failed to add entry for {0}", wEntry.IssueID);
-            StatusChangeInternal("Failed to add entry for " + wEntry.IssueID);
+            StatusChange?.Invoke(message, Status);
+            logAction(message);
         }
     }
 }

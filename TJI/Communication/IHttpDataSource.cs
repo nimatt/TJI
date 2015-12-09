@@ -22,5 +22,6 @@ namespace TJI.Communication
     public interface IHttpDataSource
     {
         IHttpResponse GetResponse(HttpWebRequest request);
+        void WriteRequestData(HttpWebRequest request, string data);
     }
 }

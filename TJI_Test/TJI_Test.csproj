@@ -44,6 +44,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Jira\JiraClientFixture.cs" />
     <Compile Include="MockHttpDataSource.cs" />
     <Compile Include="MockHttpResponse.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

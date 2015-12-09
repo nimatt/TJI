@@ -53,8 +53,10 @@ namespace TJI.Communication
         {
             Logger.Debug($"Logger in to {ClientName} started");
             HttpWebRequest request = (HttpWebRequest)WebRequest.Create(SessionUrl);
-            AddAuthenticationData(request);
             request.Method = "POST";
+            request.MediaType = "application/json";
+            request.ContentType = "application/json";
+            AddAuthenticationData(request);
 
             try
             {
@@ -107,7 +109,7 @@ namespace TJI.Communication
             {
                 using (IHttpResponse response = DataSource.GetResponse(request))
                 {
-                    if (response.StatusCode == HttpStatusCode.OK)
+                    if (response.StatusCode == HttpStatusCode.OK || response.StatusCode == HttpStatusCode.NoContent)
                     {
                         AuthCookie = null;
                         Logger.Debug($"Logged out from {ClientName}");

@@ -61,9 +61,9 @@ namespace TJI.Toggl
             DataSource = dataSource;
         }
 
-        public IEnumerable<TogglEntry> GetEntries(DateTime from, DateTime to)
+        public IReadOnlyCollection<TogglEntry> GetEntries(DateTime from, DateTime to)
         {
-            IEnumerable<TogglEntry> entries = null;
+            IReadOnlyCollection<TogglEntry> entries = null;
             string errorMessage = string.Empty;
             string completeUrl = GetFormattedEntriesUrl(from, to);
 
@@ -139,13 +139,12 @@ namespace TJI.Toggl
             return $"{EntriesUrl}?start_date={GetFormattedTime(from)}&end_date={GetFormattedTime(to)}";
         }
 
-        private static IEnumerable<TogglEntry> RemoveTooShortEntries(IEnumerable<TogglEntry> entries)
+        private static IReadOnlyCollection<TogglEntry> RemoveTooShortEntries(IReadOnlyCollection<TogglEntry> entries)
         {
-            entries = from e in entries
-                      where e.Duration > 30
-                      select e;
+            entries = (from e in entries
+                where e.Duration > 30
+                select e).ToList();
 
-            entries = entries as IList<TogglEntry> ?? entries.ToList();
             if (entries.Any())
             {
                 Logger.DebugFormat("{0} entries exceed 30 seconds", entries.Count());
