@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'>
-	<Product Id='*' Name='TJI' Language='1033' Version='2.0.0.0' Manufacturer='Mattias Nilsson' UpgradeCode='c646fd95-d10f-4a33-bf5a-6ce2a2f8d371'>
+	<Product Id='*' Name='TJI' Language='1033' Version='2.1.0.0' Manufacturer='Mattias Nilsson' UpgradeCode='c646fd95-d10f-4a33-bf5a-6ce2a2f8d371'>
 		<Package InstallerVersion='200' Compressed='yes' InstallScope='perMachine' />
 
 		<MajorUpgrade DowngradeErrorMessage='A newer version of [ProductName] is already installed.' />

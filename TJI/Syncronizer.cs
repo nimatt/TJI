@@ -87,10 +87,10 @@ namespace TJI
             client.LogonFailed += () => { AlertStatusChange("Failed to log in to Jira", Logger.Warn); };
             client.LogoutSucceeded += () => { AlertStatusChange("Logged out from Jira", Logger.Info); };
             client.LogoutFailed += () => { AlertStatusChange("Failed to log in to Jira", Logger.Warn); };
-            client.WorkEntryCreated += wEntry => { AlertStatusChange($"Added entry for {wEntry.IssueID}", Logger.Info); };
-            client.WorkEntryCreationFailed += wEntry => { AlertStatusChange($"Failed to add entry for {wEntry.IssueID}", Logger.Error); };
-            client.WorkEntryUpdated += wEntry => { AlertStatusChange($"Updated entry for {wEntry.IssueID}", Logger.Info); };
-            client.WorkEntryUpdateFailed += wEntry => { AlertStatusChange($"Failed to update entry for {wEntry.IssueID}", Logger.Error); };
+            client.WorkEntryCreated += wEntry => { AlertStatusChange($"Added entry for {wEntry.IssueId}", Logger.Info); };
+            client.WorkEntryCreationFailed += wEntry => { AlertStatusChange($"Failed to add entry for {wEntry.IssueId}", Logger.Error); };
+            client.WorkEntryUpdated += wEntry => { AlertStatusChange($"Updated entry for {wEntry.IssueId}", Logger.Info); };
+            client.WorkEntryUpdateFailed += wEntry => { AlertStatusChange($"Failed to update entry for {wEntry.IssueId}", Logger.Error); };
         }
 
         public bool IsRunning => _running && _syncThread != null && _syncThread.IsAlive;
@@ -219,11 +219,11 @@ namespace TJI
         {
             bool succeeded = true;
             bool changedIssue = false;
-            List<WorkEntry> workEntries = TranslateEntries(togglEntries);
+            IList<WorkEntry> workEntries = TranslateEntries(togglEntries);
 
             IEnumerable<IGrouping<string, WorkEntry>> groupedEntries = from e in workEntries
                                                                        where e.Updated > _lastSyncTime
-                                                                       group e by e.IssueID into eg
+                                                                       group e by e.IssueId into eg
                                                                        select eg;
 
             JiraClient jiraClient = Jira;
@@ -256,15 +256,24 @@ namespace TJI
             }
         }
 
-        private static List<WorkEntry> TranslateEntries(IEnumerable<TogglEntry> togglEntries)
+        private static IList<WorkEntry> TranslateEntries(IEnumerable<TogglEntry> togglEntries)
         {
             List<WorkEntry> workEntries = new List<WorkEntry>();
             foreach (TogglEntry tEntry in togglEntries)
             {
-                WorkEntry wEntry = WorkEntry.Create(tEntry);
+                WorkEntry wEntry = null;
+                try
+                {
+                    wEntry = WorkEntry.Create(tEntry);
+                }
+                catch (ArgumentException ae)
+                {
+                    Logger.Error("Toggl entry does not contain needed data", ae);
+                }
+                
                 if (wEntry != null)
                 {
-                    Logger.DebugFormat("Found work entry in Toggl for {0}", wEntry.IssueID);
+                    Logger.DebugFormat("Found work entry in Toggl for {0}", wEntry.IssueId);
                     workEntries.Add(wEntry);
                 }
                 else
@@ -290,7 +299,7 @@ namespace TJI
                 }
                 else
                 {
-                    Logger.DebugFormat("Entry {0} in {1} already correct", wEntry.TogglID, wEntry.IssueID);
+                    Logger.DebugFormat("Entry {0} in {1} already correct", wEntry.TogglId, wEntry.IssueId);
                 }
             }
         }

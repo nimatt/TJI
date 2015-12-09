@@ -18,58 +18,38 @@
 using System;
 using System.Linq;
 using System.Text.RegularExpressions;
+using log4net.Repository.Hierarchy;
 using TJI.Jira;
 using TJI.Toggl;
 
 namespace TJI
 {
-    class WorkEntry
+    internal class WorkEntry
     {
+        private static readonly Log Logger = Log.GetLogger(typeof(WorkEntry));
+
         private static readonly Regex JiraInfo = new Regex("^(?<issue>[A-ZÅÄÖ]+-[0-9]+)[:]?\\s*(?<comment>.*)$");
 
-        private string LogMarker
-        {
-            get
-            {
-                return string.Format("toggl_id:{0}", TogglID);
-            }
-        }
+        private string LogMarker => $"toggl_id:{TogglId}";
 
-        public int TogglID { get; private set; }
-        public string IssueID { get; private set; }
-        public string Comment { get; private set; }
+        public int TogglId { get; }
+        public string IssueId { get; private set; }
+        public string Comment { get; }
         public DateTime Start { get; private set; }
         public DateTime Updated { get; private set; }
-        public int Duration { get; private set; }
-        public int DurationInMinutes
-        {
-            get
-            {
-                return (Duration + 30) / 60;
-            }
-        }
-        public string TimeSpent
-        {
-            get
-            {
-                return DurationInMinutes + "m";
-            }
-        }
+        public int Duration { get; }
+        public int DurationInMinutes => (Duration + 30) / 60;
 
-        public string CommentWithMarker
-        {
-            get
-            {
-                return string.Format("{0}{1}{1}{2}", Comment, Environment.NewLine, LogMarker);
-            }
-        }
+        public string TimeSpent => DurationInMinutes + "m";
+
+        public string CommentWithMarker => string.Format("{0}{1}{1}{2}", Comment, Environment.NewLine, LogMarker);
 
         private WorkEntry(TogglEntry entry)
         {
             Match info = JiraInfo.Match(entry.Description);
 
-            TogglID = entry.ID;
-            IssueID = info.Groups["issue"].Value;
+            TogglId = entry.ID;
+            IssueId = info.Groups["issue"].Value;
             Comment = info.Groups["comment"].Value;
             Start = DateTime.Parse(entry.Start);
             Updated = DateTime.Parse(entry.At);
@@ -78,7 +58,27 @@ namespace TJI
 
         public static WorkEntry Create(TogglEntry entry)
         {
-            return JiraInfo.IsMatch(entry.Description ?? string.Empty) ? new WorkEntry(entry) : null;
+            if (entry == null)
+                throw new ArgumentException("Entry cannot be null", nameof(entry));
+            if (string.IsNullOrEmpty(entry.At))
+                throw new ArgumentException("Entry.At cannot be null", nameof(entry.At));
+            if (string.IsNullOrEmpty(entry.Start))
+                throw new ArgumentException("Entry.Start cannot be null", nameof(entry.Start));
+
+            WorkEntry wEntry = null;
+            if (JiraInfo.IsMatch(entry.Description ?? string.Empty))
+            {
+                try
+                {
+                    wEntry = new WorkEntry(entry);
+                }
+                catch (FormatException fe)
+                {
+                    Logger.Error("Unable to create work entry from Toggl entry", fe);
+                }
+            }
+
+            return wEntry;
         }
 
         internal JiraWorkEntry FindMatchingEntry(JiraWorklog worklog)

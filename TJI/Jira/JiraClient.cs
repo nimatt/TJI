@@ -146,8 +146,8 @@ namespace TJI.Jira
                 TimeSpent = wEntry.TimeSpent
             };
 
-            Logger.DebugFormat("Creating a entry for {0} corresponding to {1}.", wEntry.IssueID, wEntry.TogglID);
-            HttpWebRequest request = GetRequest(string.Format(GetWorklogUrl, wEntry.IssueID), true);
+            Logger.DebugFormat("Creating a entry for {0} corresponding to {1}.", wEntry.IssueId, wEntry.TogglId);
+            HttpWebRequest request = GetRequest(string.Format(GetWorklogUrl, wEntry.IssueId), true);
             request.ContentType = "application/json;charset=UTF-8";
             request.Method = "POST";
 
@@ -159,7 +159,7 @@ namespace TJI.Jira
                 {
                     if (response.StatusCode == HttpStatusCode.Created)
                     {
-                        Logger.DebugFormat("Work entry created for issue {0}", wEntry.IssueID);
+                        Logger.DebugFormat("Work entry created for issue {0}", wEntry.IssueId);
                         EncounteredError = false;
                         WorkEntryCreated?.Invoke(wEntry);
                         return true;
@@ -167,7 +167,7 @@ namespace TJI.Jira
                     else
                     {
                         WorkEntryCreationFailed?.Invoke(wEntry);
-                        Logger.WarnFormat("Didn't get the expected status code back when creating a work entry for {0}. Got {1}", wEntry.IssueID, response.StatusCode);
+                        Logger.WarnFormat("Didn't get the expected status code back when creating a work entry for {0}. Got {1}", wEntry.IssueId, response.StatusCode);
                     }
                 }
             }
@@ -202,7 +202,7 @@ namespace TJI.Jira
             jEntry.TimeSpent = wEntry.TimeSpent;
             jEntry.TimeSpentSeconds = 0;
 
-            Logger.DebugFormat("Syncronizing {0} in {1}", wEntry.TogglID, wEntry.IssueID);
+            Logger.DebugFormat("Syncronizing {0} in {1}", wEntry.TogglId, wEntry.IssueId);
             HttpWebRequest request = GetRequest(jEntry.Self, false);
             request.ContentType = "application/json;charset=UTF-8";
             request.Method = "PUT";
@@ -223,7 +223,7 @@ namespace TJI.Jira
                     {
                         EncounteredError = true;
                         WorkEntryUpdateFailed?.Invoke(wEntry);
-                        Logger.WarnFormat("Didn't get the expected status code back when syncing a work entry for {0}. Got {1}", wEntry.IssueID, response.StatusCode);
+                        Logger.WarnFormat("Didn't get the expected status code back when syncing a work entry for {0}. Got {1}", wEntry.IssueId, response.StatusCode);
                     }
                 }
             }

@@ -49,6 +49,7 @@
     <Compile Include="MockHttpResponse.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Toggl\TogglClientFixture.cs" />
+    <Compile Include="WorkEntryFixture.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\TJI\TJI.csproj">
