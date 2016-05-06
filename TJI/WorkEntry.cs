@@ -18,7 +18,6 @@
 using System;
 using System.Linq;
 using System.Text.RegularExpressions;
-using log4net.Repository.Hierarchy;
 using TJI.Jira;
 using TJI.Toggl;
 

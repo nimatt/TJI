@@ -35,6 +35,7 @@ namespace TJI.Jira
         protected override IHttpDataSource DataSource { get; }
         public override string CookieName => "JSESSIONID";
         protected override string ClientName => "Jira";
+        protected override string ServerUrl => _serverUrl;
 
         private readonly string _username;
         private readonly string _password;
@@ -94,22 +95,17 @@ namespace TJI.Jira
             JiraWorklog worklog = null;
 
             Logger.DebugFormat("Getting worklog for {0}", issue);
-            HttpWebRequest request = GetRequest(string.Format(GetWorklogUrl, issue), true);
-            request.Method = "GET";
+            
 
             try
             {
-                using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
-                using (Stream stream = response.GetResponseStream())
+                using (IHttpResponse response = GetResponse(() => GetIssueWorklogRequest(issue)))
                 {
                     if (response.StatusCode == HttpStatusCode.OK)
                     {
                         Logger.Debug("Got an OK from Jira when fetching worklog");
-                        DataContractJsonSerializer serializer = new DataContractJsonSerializer(typeof(JiraWorklog));
-                        if (stream != null)
-                        {
-                            worklog = serializer.ReadObject(stream) as JiraWorklog;
-                        }
+                        worklog = response.GetResponseData<JiraWorklog>();
+
                         if (worklog != null)
                         {
                             Logger.Debug("Jira worklog serialzed");
@@ -132,6 +128,13 @@ namespace TJI.Jira
             return worklog;
         }
 
+        private HttpWebRequest GetIssueWorklogRequest(string issue)
+        {
+            HttpWebRequest request = GetRequest(string.Format(GetWorklogUrl, issue), true);
+            request.Method = "GET";
+            return request;
+        }
+
         /// <summary>
         /// Adds the gived entry to the worklog of its issue
         /// </summary>
@@ -147,15 +150,11 @@ namespace TJI.Jira
             };
 
             Logger.DebugFormat("Creating a entry for {0} corresponding to {1}.", wEntry.IssueId, wEntry.TogglId);
-            HttpWebRequest request = GetRequest(string.Format(GetWorklogUrl, wEntry.IssueId), true);
-            request.ContentType = "application/json;charset=UTF-8";
-            request.Method = "POST";
+            
 
             try
             {
-                WriteWorkEntry(jEntry, request);
-
-                using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
+                using (IHttpResponse response = GetResponse(() => GetWorkEntryRequest(jEntry, ServerUrl + string.Format(GetWorklogUrl, wEntry.IssueId), "POST")))
                 {
                     if (response.StatusCode == HttpStatusCode.Created)
                     {
@@ -181,6 +180,17 @@ namespace TJI.Jira
             return false;
         }
 
+        private HttpWebRequest GetWorkEntryRequest(JiraWorkEntry jEntry, string url, string method)
+        {
+            HttpWebRequest request = GetRequest(url, false);
+            request.ContentType = "application/json;charset=UTF-8";
+            request.Method = method;
+
+            WriteWorkEntry(jEntry, request);
+
+            return request;
+        }
+
         /// <summary>
         /// Returns a string containing the start time of the entry in a correct format for Jira
         /// </summary>
@@ -203,15 +213,10 @@ namespace TJI.Jira
             jEntry.TimeSpentSeconds = 0;
 
             Logger.DebugFormat("Syncronizing {0} in {1}", wEntry.TogglId, wEntry.IssueId);
-            HttpWebRequest request = GetRequest(jEntry.Self, false);
-            request.ContentType = "application/json;charset=UTF-8";
-            request.Method = "PUT";
 
             try
             {
-                WriteWorkEntry(jEntry, request);
-
-                using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
+                using (IHttpResponse response = GetResponse(() => GetWorkEntryRequest(jEntry, jEntry.Self, "PUT")))
                 {
                     if (response.StatusCode == HttpStatusCode.OK)
                     {
@@ -242,36 +247,18 @@ namespace TJI.Jira
         /// </summary>
         /// <param name="jEntry">Entry to write</param>
         /// <param name="request">Request to write to</param>
-        private static void WriteWorkEntry(JiraWorkEntry jEntry, HttpWebRequest request)
+        private void WriteWorkEntry(JiraWorkEntry jEntry, HttpWebRequest request)
         {
-            using (StreamWriter writer = new StreamWriter(request.GetRequestStream()))
             using (MemoryStream memStream = new MemoryStream())
             {
                 DataContractJsonSerializer serializer = new DataContractJsonSerializer(typeof(JiraWorkEntry));
                 serializer.WriteObject(memStream, jEntry);
                 string jsonData = Encoding.UTF8.GetString(memStream.ToArray());
-                writer.Write(jsonData);
+
+                DataSource.WriteRequestData(request, jsonData);
+
                 Logger.Debug("Work entry written to stream");
             }
-        }
-
-        /// <summary>
-        /// Builds a request to be used to get or update information in Jira
-        /// </summary>
-        /// <param name="url">Url to send the request to</param>
-        /// <param name="relative">Set to true if url doesn't contain server base url</param>
-        /// <returns>A request with basic configuration</returns>
-        private HttpWebRequest GetRequest(string url, bool relative)
-        {
-            if (relative)
-                url = _serverUrl + url;
-
-            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
-            CookieContainer cookieContainer = new CookieContainer();
-            cookieContainer.Add(request.RequestUri, AuthCookie);
-            request.CookieContainer = cookieContainer;
-
-            return request;
         }
     }
 }

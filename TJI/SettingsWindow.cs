@@ -26,9 +26,9 @@ namespace TJI
         private static readonly Log Logger = Log.GetLogger(typeof(MainWindow));
         private delegate void UpdateStatus(string message, SyncronizerStatus status);
 
-        private readonly TJISettings _settings;
+        private readonly TjiSettings _settings;
 
-        public SettingsWindow(TJISettings settings)
+        public SettingsWindow(TjiSettings settings)
         {
             _settings = settings;
             Logger.Debug("Initializing _settings window");
@@ -44,6 +44,7 @@ namespace TJI
             jiraPassword.Text = _settings.JiraPassword;
             togglApiToken.Text = _settings.TogglApiToken;
             syncSleepTime.Text = _settings.SyncIntervall.ToString();
+            daysBack.Text = _settings.DaysBack.ToString();
         }
 
         private void SettingsUpdated(object sender, EventArgs e)
@@ -55,6 +56,7 @@ namespace TJI
             changeMade |= jiraPassword.Text != _settings.JiraPassword;
             changeMade |= togglApiToken.Text != _settings.TogglApiToken;
             changeMade |= syncSleepTime.Text != _settings.SyncIntervall.ToString();
+            changeMade |= daysBack.Text != _settings.DaysBack.ToString();
 
             if (changeMade)
             {
@@ -71,6 +73,7 @@ namespace TJI
             _settings.JiraUsername = jiraUsername.Text;
             _settings.JiraPassword = jiraPassword.Text;
             _settings.SyncIntervall = int.Parse(syncSleepTime.Text);
+            _settings.DaysBack = int.Parse(daysBack.Text);
 
             _settings.Save();
             Logger.Debug("Settings saved");

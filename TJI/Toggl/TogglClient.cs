@@ -22,6 +22,7 @@ namespace TJI.Toggl
 
         protected override IHttpDataSource DataSource { get; }
         public override string CookieName => "toggl_api_session_new";
+        protected override string ServerUrl => "https://www.toggl.com";
 
         protected override string ClientName => "Toggl";
 
@@ -68,18 +69,10 @@ namespace TJI.Toggl
             string completeUrl = GetFormattedEntriesUrl(from, to);
 
             Logger.DebugFormat("Getting entries from Toggl updated between {0} and {1}", GetFormattedTime(from), GetFormattedTime(to));
-            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(completeUrl);
-
-            CookieContainer cookieContainer = new CookieContainer();
-            cookieContainer.Add(request.RequestUri, AuthCookie);
-
-            request.CookieContainer = cookieContainer;
-            request.Method = "GET";
-            request.ContentType = "application/json";
-
+            
             try
             {
-                using (IHttpResponse response = DataSource.GetResponse(request))
+                using (IHttpResponse response = GetResponse(() => GetEntriesRequest(completeUrl)))
                 {
                     if (response.StatusCode == HttpStatusCode.OK)
                     {
@@ -100,7 +93,7 @@ namespace TJI.Toggl
                         }
                         else if (entries.Any())
                         {
-                            Logger.DebugFormat("Got {0} entries from Toggl", entries.Count());
+                            Logger.DebugFormat("Got {0} entries from Toggl", entries.Count);
                         }
                         else
                         {
@@ -134,6 +127,14 @@ namespace TJI.Toggl
             return entries;
         }
 
+        private HttpWebRequest GetEntriesRequest(string url)
+        {
+            HttpWebRequest request = GetRequest(url, relative: false);
+            request.Method = "GET";
+            request.ContentType = "application/json";
+            return request;
+        }
+
         internal string GetFormattedEntriesUrl(DateTime from, DateTime to)
         {
             return $"{EntriesUrl}?start_date={GetFormattedTime(from)}&end_date={GetFormattedTime(to)}";
@@ -147,7 +148,7 @@ namespace TJI.Toggl
 
             if (entries.Any())
             {
-                Logger.DebugFormat("{0} entries exceed 30 seconds", entries.Count());
+                Logger.DebugFormat("{0} entries exceed 30 seconds", entries.Count);
             }
             else
             {

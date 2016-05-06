@@ -45,6 +45,8 @@
             this.jiraGroup = new System.Windows.Forms.GroupBox();
             this.togglGroup = new System.Windows.Forms.GroupBox();
             this.advancedGroup = new System.Windows.Forms.GroupBox();
+            this.label1 = new System.Windows.Forms.Label();
+            this.daysBack = new System.Windows.Forms.TextBox();
             this.jiraGroup.SuspendLayout();
             this.togglGroup.SuspendLayout();
             this.advancedGroup.SuspendLayout();
@@ -102,7 +104,7 @@
             // 
             // cancelButton
             // 
-            this.cancelButton.Location = new System.Drawing.Point(223, 326);
+            this.cancelButton.Location = new System.Drawing.Point(223, 352);
             this.cancelButton.Name = "cancelButton";
             this.cancelButton.Size = new System.Drawing.Size(75, 23);
             this.cancelButton.TabIndex = 9;
@@ -144,7 +146,7 @@
             // 
             // okButton
             // 
-            this.okButton.Location = new System.Drawing.Point(142, 326);
+            this.okButton.Location = new System.Drawing.Point(142, 352);
             this.okButton.Name = "okButton";
             this.okButton.Size = new System.Drawing.Size(75, 23);
             this.okButton.TabIndex = 13;
@@ -180,20 +182,38 @@
             // 
             // advancedGroup
             // 
+            this.advancedGroup.Controls.Add(this.label1);
+            this.advancedGroup.Controls.Add(this.daysBack);
             this.advancedGroup.Controls.Add(this.syncTimeLabel);
             this.advancedGroup.Controls.Add(this.syncSleepTime);
             this.advancedGroup.Location = new System.Drawing.Point(13, 240);
             this.advancedGroup.Name = "advancedGroup";
-            this.advancedGroup.Size = new System.Drawing.Size(285, 64);
+            this.advancedGroup.Size = new System.Drawing.Size(285, 106);
             this.advancedGroup.TabIndex = 16;
             this.advancedGroup.TabStop = false;
             this.advancedGroup.Text = "Advanced";
+            // 
+            // label1
+            // 
+            this.label1.AutoSize = true;
+            this.label1.Location = new System.Drawing.Point(6, 58);
+            this.label1.Name = "label1";
+            this.label1.Size = new System.Drawing.Size(100, 13);
+            this.label1.TabIndex = 12;
+            this.label1.Text = "Time window (days)";
+            // 
+            // daysBack
+            // 
+            this.daysBack.Location = new System.Drawing.Point(6, 74);
+            this.daysBack.Name = "daysBack";
+            this.daysBack.Size = new System.Drawing.Size(267, 20);
+            this.daysBack.TabIndex = 13;
             // 
             // SettingsWindow
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(310, 361);
+            this.ClientSize = new System.Drawing.Size(310, 385);
             this.Controls.Add(this.advancedGroup);
             this.Controls.Add(this.togglGroup);
             this.Controls.Add(this.jiraGroup);
@@ -233,5 +253,7 @@
         private System.Windows.Forms.GroupBox jiraGroup;
         private System.Windows.Forms.GroupBox togglGroup;
         private System.Windows.Forms.GroupBox advancedGroup;
+        private System.Windows.Forms.Label label1;
+        private System.Windows.Forms.TextBox daysBack;
     }
 }

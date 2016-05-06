@@ -39,12 +39,11 @@ namespace TJI.Communication
         protected abstract IHttpDataSource DataSource { get; }
 
         public abstract string CookieName { get; }
+        protected abstract string ServerUrl { get; }
         protected abstract string ClientName { get; }
 
         protected Cookie AuthCookie { get; private set; }
 
-
-        // TODO: Add expiration
         public bool IsLoggedIn => AuthCookie != null;
 
         protected abstract void AddAuthenticationData(HttpWebRequest request);
@@ -127,6 +126,50 @@ namespace TJI.Communication
                 Logger.Error($"Error during log out from {ClientName}", we);
                 LogoutFailed?.Invoke();
             }
+        }
+
+        protected IHttpResponse GetResponse(Func<HttpWebRequest> requestCreator)
+        {
+            return GetResponse(requestCreator, true);
+        }
+
+        private IHttpResponse GetResponse(Func<HttpWebRequest> requestCreator, bool retry)
+        {
+            try
+            {
+                return DataSource.GetResponse(requestCreator());
+            }
+            catch (WebException ex)
+            {
+                HttpWebResponse response = ex.Response as HttpWebResponse;
+                if (response?.StatusCode == HttpStatusCode.Unauthorized && retry)
+                {
+                    Logger.Info($"Unauthorized returned from {ClientName}, reauthenticating.");
+                    LogIn();
+                    return GetResponse(requestCreator, false);
+                }
+
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Builds a request to be used to get or update information in Jira
+        /// </summary>
+        /// <param name="url">Url to send the request to</param>
+        /// <param name="relative">Set to true if url doesn't contain server base url</param>
+        /// <returns>A request with basic configuration</returns>
+        protected HttpWebRequest GetRequest(string url, bool relative)
+        {
+            if (relative)
+                url = ServerUrl + url;
+
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+            CookieContainer cookieContainer = new CookieContainer();
+            cookieContainer.Add(request.RequestUri, AuthCookie);
+            request.CookieContainer = cookieContainer;
+
+            return request;
         }
     }
 }

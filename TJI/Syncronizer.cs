@@ -28,7 +28,7 @@ namespace TJI
     {
         private static readonly Log Logger = Log.GetLogger(typeof(Syncronizer));
 
-        public TJISettings Settings { get; }
+        public TjiSettings Settings { get; }
 
         private bool _running;
         private Thread _syncThread;
@@ -122,7 +122,7 @@ namespace TJI
 
         public Syncronizer()
         {
-            Settings = new TJISettings();
+            Settings = new TjiSettings();
         }
 
         public void Start()
@@ -150,7 +150,7 @@ namespace TJI
                         if (Toggl != null && Toggl.IsLoggedIn && Jira != null && Jira.IsLoggedIn)
                         {
                             DateTime startSyncTime = DateTime.Now;
-                            var entries = Toggl.GetEntries(startSyncTime.AddDays(-2), startSyncTime);
+                            var entries = Toggl.GetEntries(startSyncTime.AddDays(-Settings.DaysBack), startSyncTime);
 
                             if (entries != null && entries.Any())
                             {

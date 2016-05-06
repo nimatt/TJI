@@ -129,7 +129,7 @@
       <DependentUpon>Settings.settings</DependentUpon>
     </Compile>
     <Compile Include="SyncronizerStatus.cs" />
-    <Compile Include="TJISettings.cs" />
+    <Compile Include="TjiSettings.cs" />
     <Compile Include="Syncronizer.cs" />
     <Compile Include="Toggl\TogglClient.cs" />
     <Compile Include="Toggl\TogglEntry.cs" />

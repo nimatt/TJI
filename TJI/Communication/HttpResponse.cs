@@ -39,7 +39,7 @@ namespace TJI.Communication
         {
             get
             {
-                // TODO: We might should handle the case with multiple headers with the same key since it's allowed
+                // TODO: We should handle the case with multiple headers with the same key since it's allowed
                 return _webResponse.Headers.AllKeys.ToDictionary(key => key, key => _webResponse.Headers[key]);
             }
         }

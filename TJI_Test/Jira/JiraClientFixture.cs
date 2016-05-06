@@ -15,18 +15,14 @@
  * along with TJI.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
-using System.Globalization;
-using System.Linq;
 using System.Net;
 using NUnit.Framework;
 using TJI.Communication;
 using TJI.Jira;
 using TJI.Toggl;
 
-namespace TJI_Test.Toggl
+namespace TJI_Test.Jira
 {
     [TestFixture]
     public class JiraClientFixture
@@ -182,20 +178,20 @@ namespace TJI_Test.Toggl
 
         private class JiraClientStatusKeeper
         {
-            private readonly JiraClient _JiraClient;
+            private readonly JiraClient _jiraClient;
 
             public bool LogonFailed { get; private set; }
             public bool LogonSucceeded { get; private set; }
             public bool LogoutFailed { get; private set; }
             public bool LogoutSucceeded { get; private set; }
 
-            public bool IsLoggedIn => _JiraClient.IsLoggedIn;
+            public bool IsLoggedIn => _jiraClient.IsLoggedIn;
 
-            public bool EncounteredError => _JiraClient.EncounteredError;
+            public bool EncounteredError => _jiraClient.EncounteredError;
 
             public JiraClientStatusKeeper(JiraClient client)
             {
-                _JiraClient = client;
+                _jiraClient = client;
 
                 client.LogonFailed += delegate { LogonFailed = true; };
                 client.LogonSucceeded += delegate { LogonSucceeded = true; };

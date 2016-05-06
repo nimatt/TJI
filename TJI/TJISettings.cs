@@ -22,16 +22,17 @@ using System.Text;
 
 namespace TJI
 {
-    public class TJISettings
+    public class TjiSettings
     {
         public string TogglApiToken { get; set; }
         public string JiraServerUrl { get; set; }
         public string JiraUsername { get; set; }
         public string JiraPassword { get; set; }
         public int SyncIntervall { get; set; }
+        public int DaysBack { get; set; }
         public bool Debug { get; set; }
 
-        public TJISettings()
+        public TjiSettings()
         {
             Properties.Settings loadedSettings = Properties.Settings.Default;
 
@@ -42,6 +43,7 @@ namespace TJI
             JiraUsername = loadedSettings.JiraUsername;
             JiraPassword = Decrypt(loadedSettings.JiraPassword);
             SyncIntervall = loadedSettings.SyncIntervall;
+            DaysBack = loadedSettings.DaysBack;
             Debug = loadedSettings.Debug;
         }
 
@@ -87,7 +89,7 @@ namespace TJI
             try
             {
                 T? oldSetting = loadedSettings.GetPreviousVersion(setting) as T?;
-                return oldSetting.HasValue ? oldSetting.Value : defaultValue;
+                return oldSetting ?? defaultValue;
             }
             catch (SettingsPropertyNotFoundException)
             {
@@ -104,6 +106,7 @@ namespace TJI
             loadedSettings.JiraUsername = JiraUsername;
             loadedSettings.JiraPassword = Encrypt(JiraPassword);
             loadedSettings.SyncIntervall = SyncIntervall;
+            loadedSettings.DaysBack = DaysBack;
             
             loadedSettings.Debug = Debug;
 
@@ -121,13 +124,7 @@ namespace TJI
             }
         }
 
-        private static byte[] Entropy
-        {
-            get
-            {
-                return Encoding.Unicode.GetBytes(Environment.MachineName);
-            }
-        }
+        private static byte[] Entropy => Encoding.Unicode.GetBytes(Environment.MachineName);
 
         private static string Encrypt(string input)
         {
