@@ -26,7 +26,7 @@ namespace TJI.Communication
     {
         private static readonly Log Logger = Log.GetLogger(typeof(SessionClient));
 
-        private Regex CookieContents => new Regex(CookieName + @"=(?<contents>[^;]+);.*Path=(?<path>[^;]+);.*", RegexOptions.Compiled);
+        private Regex CookieContents => new Regex(CookieName + @"=(?<contents>[^;]+);.*Path=(?<path>[^;]+);.*", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         public abstract string SessionUrl { get; }
 
