@@ -166,7 +166,7 @@ namespace TJI
                     }
                     catch (Exception e)
                     {
-                        Logger.Error("Exception while syncronizing", e);
+                        Logger.Error("Exception while synchronizing", e);
                     }
                 }
             });
@@ -187,7 +187,7 @@ namespace TJI
                 }
                 catch (Exception e)
                 {
-                    Logger.Warn("Unable to join with syncronizer thread.", e);
+                    Logger.Warn("Unable to join with synchronizer thread.", e);
                 }
             }
 
@@ -233,7 +233,7 @@ namespace TJI
                 JiraWorklog worklog = jiraClient.GetIssueWorklog(entriesForIssue.Key);
                 if (worklog != null)
                 {
-                    Logger.DebugFormat("Syncronizing worklog for {0}", entriesForIssue.Key);
+                    Logger.DebugFormat("Synchronizing worklog for {0}", entriesForIssue.Key);
                     SyncronizeWorklog(worklog, entriesForIssue);
                     changedIssue = true;
                 }
@@ -249,9 +249,9 @@ namespace TJI
             {
                 if (changedIssue)
                 {
-                    AlertStatusChange("Syncronized successfully", Logger.Info);
+                    AlertStatusChange("Synchronized successfully", Logger.Info);
                 }
-                Logger.Debug("Successfully syncronized systems");
+                Logger.Debug("Successfully synchronized systems");
                 _lastSyncTime = startSyncTime;
             }
         }

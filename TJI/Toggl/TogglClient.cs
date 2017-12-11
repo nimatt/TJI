@@ -39,6 +39,7 @@ namespace TJI.Toggl
             string authHeader = "Basic " + userpassB64;
 
             request.Headers.Add("Authorization", authHeader);
+            request.ContentLength = 0;
         }
 
         public TogglClient(string apiToken)

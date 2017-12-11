@@ -108,7 +108,7 @@ namespace TJI.Jira
 
                         if (worklog != null)
                         {
-                            Logger.Debug("Jira worklog serialzed");
+                            Logger.Debug("Jira worklog serialized");
                         }
                     }
                     else
@@ -149,7 +149,7 @@ namespace TJI.Jira
                 TimeSpent = wEntry.TimeSpent
             };
 
-            Logger.DebugFormat("Creating a entry for {0} corresponding to {1}.", wEntry.IssueId, wEntry.TogglId);
+            Logger.DebugFormat("Creating an entry for {0} corresponding to {1}.", wEntry.IssueId, wEntry.TogglId);
             
 
             try
@@ -173,7 +173,7 @@ namespace TJI.Jira
             catch (WebException we)
             {
                 WorkEntryCreationFailed?.Invoke(wEntry);
-                Logger.Error("Unable add work entry", we);
+                Logger.Error("Unable to add work entry", we);
             }
 
             EncounteredError = true;
@@ -212,7 +212,7 @@ namespace TJI.Jira
             jEntry.TimeSpent = wEntry.TimeSpent;
             jEntry.TimeSpentSeconds = 0;
 
-            Logger.DebugFormat("Syncronizing {0} in {1}", wEntry.TogglId, wEntry.IssueId);
+            Logger.DebugFormat("Synchronizing {0} in {1}", wEntry.TogglId, wEntry.IssueId);
 
             try
             {

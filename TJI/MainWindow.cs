@@ -36,6 +36,7 @@ namespace TJI
         {
             Logger.Debug("Initializing window");
             InitializeComponent();
+            AddContextMenu(output);
             SetStartupText();
             Logger.Debug("Main window initialized");
         }
@@ -135,7 +136,7 @@ namespace TJI
 
         private void StopSyncronization()
         {
-            Logger.Info("Stopping syncronization");
+            Logger.Info("Stopping synchronization");
             startStopButton.Text = "Start";
             settingsButton.Enabled = true;
             _syncronizer.Stop();
@@ -143,7 +144,7 @@ namespace TJI
 
         private void StartSyncronization()
         {
-            Logger.Info("Starting syncronization");
+            Logger.Info("Starting synchronization");
             startStopButton.Text = "Stop";
             settingsButton.Enabled = false;
             _syncronizer.Start();
@@ -203,6 +204,18 @@ namespace TJI
         {
             AppendLine("You do not seem to have valid settings at the moment.");
             AppendLine("Please click 'Settings' below.");
+        }
+
+        private static void AddContextMenu(RichTextBox rtb)
+        {
+            if (rtb.ContextMenuStrip != null)
+                return;
+
+            ContextMenuStrip cms = new ContextMenuStrip { ShowImageMargin = false };
+            ToolStripMenuItem tsmiCopy = new ToolStripMenuItem("Copy");
+            tsmiCopy.Click += (sender, e) => rtb.Copy();
+            cms.Items.Add(tsmiCopy);
+            rtb.ContextMenuStrip = cms;
         }
     }
 }
